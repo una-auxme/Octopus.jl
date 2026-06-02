@@ -1,0 +1,18 @@
+# Julia
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+*.cov
+
+# Resolved environments — let Pkg resolve fresh from Project.toml + compat.
+/Manifest.toml
+/docs/Manifest.toml
+/benchmarks/Manifest.toml
+
+# Documenter build output
+/docs/build/
+
+# Editor / OS
+.DS_Store
+.vscode/
+*.swp
