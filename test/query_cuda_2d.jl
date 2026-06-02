@@ -32,9 +32,10 @@ else
         function count_kernel_2d!(counts, dv, N)
             i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
             i > N && return nothing
+            i32 = Int32(i)
             c = Int32(0)
-            for_each_neighbor_device(dv, i) do j
-                if j != Int32(i)
+            TreeNSearch.@for_each_neighbor_device_inline_2d dv i j begin
+                if j != i32
                     c += Int32(1)
                 end
             end
@@ -79,9 +80,10 @@ else
         function collect_kernel_2d!(lists, cnts, dv, N, maxn)
             i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
             i > N && return nothing
+            i32 = Int32(i)
             k = Int32(0)
-            for_each_neighbor_device(dv, i) do j
-                if j != Int32(i) && k < Int32(maxn)
+            TreeNSearch.@for_each_neighbor_device_inline_2d dv i j begin
+                if j != i32 && k < Int32(maxn)
                     k += Int32(1)
                     @inbounds lists[k, i] = j
                 end
