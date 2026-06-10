@@ -32,7 +32,7 @@ end
     @test tns isa TNS{Float64,3}
     set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     for i in 1:size(coords, 2)
@@ -49,7 +49,7 @@ end
     tns = TNS(Float64)
     set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     e = build_edges(tns, id, id)
 
@@ -74,7 +74,7 @@ end
     @test tns isa TNS{Float64,2}
     set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     for i in 1:size(coords, 2)
@@ -90,7 +90,7 @@ end
     r = 0.1
     tns = TNS(Float64); set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     materialize_all_neighbors!(tns)
 
@@ -111,7 +111,7 @@ end
     coords = rand(Float64, 3, 200)
     tns = TNS(Float64); set_search_radius!(tns, 0.1)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     masses = rand(Float64, 200)

@@ -98,7 +98,7 @@ function tns_build_edges(pos::Matrix{Float32}, radius::Float32)
     tns = TNS(Float32; ndims = D)
     set_search_radius!(tns, radius)
     id = add_point_set!(tns, pos3)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     out = build_edges(tns, id, id)
     return out.senders, out.receivers, out.rel_displacement, out.rel_dist_norm

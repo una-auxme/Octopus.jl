@@ -41,7 +41,7 @@ end
     r = 0.1f0
     tns = TNS(); set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     for i in 1:size(coords, 2)

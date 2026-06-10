@@ -1,5 +1,5 @@
 # Apply the z-order permutation to user arrays.
-# prepare_zsort! ensures the permutation for a given point set is available
+# prepare_zsort! ensures the permutation for every registered point set is available
 # (requires refit_mode, or at least that the current build kept it).
 
 function apply_zsort_cpu!(out::AbstractArray, perm::AbstractVector{Int32}, original::AbstractArray)

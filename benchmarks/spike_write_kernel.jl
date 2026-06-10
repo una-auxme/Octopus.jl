@@ -265,7 +265,7 @@ function setup_scene(pos2d::Matrix{Float32}, radius::Float32)
     tns = TNS(Float32; ndims=3)
     set_search_radius!(tns, radius)
     id = add_point_set!(tns, gpu_pos3)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     dv = device_view(tns, id, id)
 

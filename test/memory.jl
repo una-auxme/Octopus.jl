@@ -27,7 +27,7 @@ end
     tns = TNS()
     set_search_radius!(tns, 0.02f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     bpp = tns_overhead_bytes(tns) / N
@@ -42,7 +42,7 @@ end
     tns = TNS()
     set_search_radius!(tns, 0.02f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     materialize_all_neighbors!(tns)
 
@@ -57,7 +57,7 @@ end
     tns = TNS()
     set_search_radius!(tns, 0.05f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     # Reuse the SAME closure for warmup and measurement.

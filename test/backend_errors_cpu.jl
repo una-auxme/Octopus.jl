@@ -11,7 +11,7 @@ using Random
     coords = rand(Float32, 3, 50)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test_throws ErrorException device_view(tns, id, id)
 end
@@ -27,7 +27,7 @@ end
     tns = TNS(Float32)
     # add_point_set! without a radius is allowed (just registers the set).
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     @test_throws ArgumentError run!(tns)
 end
 
@@ -39,7 +39,7 @@ end
     coords = rand(Float32, 3, 100)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
 
     # n_nodes == 0 → traversal short-circuits to zero edges (no crash).
     e0 = build_edges(tns, id, id)
@@ -55,7 +55,7 @@ end
     coords = rand(Float32, 3, 50)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    @test_throws ErrorException prepare_zsort!(tns, id)
+    @test_throws ErrorException prepare_zsort!(tns)
 end
 
 @testset "apply_zsort! rejects mismatched length" begin
@@ -63,7 +63,7 @@ end
     coords = rand(Float32, 3, 50)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     # Wrong length triggers the @assert inside apply_zsort_cpu! (AssertionError).

@@ -27,11 +27,12 @@ include("macros.jl")
 export TNS
 export set_search_radius!, set_refit_mode!
 export add_point_set!, resize_point_set!, update_point_set!
-export set_active_search!, set_symmetric_search!
+export set_active_search!
 export run!
 export for_each_neighbor, for_each_neighbor_device
 export get_neighborlist, materialize_all_neighbors!
 export build_edges, build_edges!, EdgeBuffer
+export build_edges_diff
 export prepare_zsort!, apply_zsort!
 export device_view
 export @for_each_neighbor_device_inline
@@ -46,5 +47,24 @@ function _apply_zsort_cuda end
 function _cuda_error(msg::AbstractString)
     error("TreeNSearch: $msg")
 end
+
+"""
+    build_edges_diff(coords, tns, id, radius) -> NamedTuple
+
+Differentiable wrapper around `build_edges(tns, id, id)`. Returns a NamedTuple
+with `(senders, receivers, rel_displacement, rel_dist_norm)` whose arrays are
+fresh copies (so backprop closures are not affected by subsequent buffer
+overwrites). Gradients flow back to `coords` (the tree topology and the
+search radius are non-differentiable).
+
+The user is responsible for keeping `coords` in sync with `tns` — typically
+by calling `update_point_set!(tns, id, coords); run!(tns)` under
+`Zygote.@ignore` before this function.
+
+Loaded via the `TreeNSearchChainRulesCoreExt` and
+`TreeNSearchCUDAChainRulesCoreExt` weak extensions; requires
+`using ChainRulesCore` (and `using CUDA` for the GPU path).
+"""
+function build_edges_diff end
 
 end # module

@@ -10,7 +10,7 @@ function compare_to_brute_2d(coords::Matrix{Float32}, r::Float32; seed=0)
     tns = TNS(Float32; ndims=2)
     set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     n = size(coords, 2)
     for i in 1:n
@@ -80,7 +80,7 @@ end
     tns = TNS(Float32; ndims=2)
     set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     materialize_all_neighbors!(tns)
 

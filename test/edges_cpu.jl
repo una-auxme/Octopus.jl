@@ -50,7 +50,7 @@ function compare_edges_to_brute(coords::Matrix{Float32}, r::Float32; seed=0)
     tns = TNS(Float32)
     set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     e = build_edges(tns, id, id)
@@ -126,7 +126,7 @@ end
     tns = TNS(Float32)
     set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     materialize_all_neighbors!(tns)
@@ -153,14 +153,14 @@ end
     @test edge_pairs == csr_pairs
 end
 
-@testset "edges output shapes/types match GraphNetSim drop-in" begin
+@testset "edges output shapes/types are flat-COO Vector{Int32} / Matrix{T}" begin
     Random.seed!(61)
     coords = rand(Float32, 3, 300)
     r = 0.08f0
     tns = TNS(Float32)
     set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     e = build_edges(tns, id, id)
 
@@ -180,7 +180,7 @@ end
     tns = TNS(Float32)
     set_search_radius!(tns, r)
     id = add_point_set!(tns, coords1)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     e1 = build_edges(tns, id, id)
     n1 = length(e1.senders)

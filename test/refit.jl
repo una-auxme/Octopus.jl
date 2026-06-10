@@ -11,7 +11,7 @@ using Random
     coords = rand(Float32, 3, 300)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     @test tns.refit_mode == false
 
     run!(tns)
@@ -26,7 +26,7 @@ end
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     set_refit_mode!(tns, true)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
 
     run!(tns)
     @test tns.refit_mode == true
@@ -38,7 +38,7 @@ end
     coords = rand(Float32, 3, 200)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test !tns.dirty[id]
 
@@ -63,13 +63,13 @@ end
 
     tns_a = TNS(Float32); set_search_radius!(tns_a, r)
     id_a = add_point_set!(tns_a, coords)
-    set_symmetric_search!(tns_a, id_a, id_a)
+    set_active_search!(tns_a, id_a, id_a)
     run!(tns_a)
 
     tns_b = TNS(Float32); set_search_radius!(tns_b, r)
     set_refit_mode!(tns_b, true)
     id_b = add_point_set!(tns_b, coords)
-    set_symmetric_search!(tns_b, id_b, id_b)
+    set_active_search!(tns_b, id_b, id_b)
     run!(tns_b)
 
     for i in 1:size(coords, 2)
@@ -86,7 +86,7 @@ end
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     set_refit_mode!(tns, true)
     id = add_point_set!(tns, coords1)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test length(tns.morton_codes[id]) == 200
 
@@ -103,7 +103,7 @@ end
     coords = rand(Float32, 2, 300)
     tns = TNS(Float32; ndims=2); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test length(tns.morton_codes[id]) == 0
 end
@@ -114,7 +114,7 @@ end
     tns = TNS(Float32; ndims=2); set_search_radius!(tns, 0.1f0)
     set_refit_mode!(tns, true)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test length(tns.morton_codes[id]) == 300
 end

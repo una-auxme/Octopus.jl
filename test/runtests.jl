@@ -28,4 +28,9 @@ using Random
     else
         @info "skipping CUDA tests; set JULIA_TREENSEARCH_TEST_CUDA=1 to enable"
     end
+    if get(ENV, "JULIA_TREENSEARCH_TEST_CHAINRULES", "0") == "1"
+        @testset "chainrules"    include("chainrules.jl")
+    else
+        @info "skipping ChainRulesCore tests; set JULIA_TREENSEARCH_TEST_CHAINRULES=1 to enable"
+    end
 end

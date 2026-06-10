@@ -27,12 +27,12 @@ else
 
         tns_cpu = TNS(Float32); set_search_radius!(tns_cpu, r)
         cid = add_point_set!(tns_cpu, cpu_coords)
-        set_symmetric_search!(tns_cpu, cid, cid); run!(tns_cpu)
+        set_active_search!(tns_cpu, cid, cid); run!(tns_cpu)
         e_cpu = build_edges(tns_cpu, cid, cid)
 
         tns_gpu = TNS(Float32); set_search_radius!(tns_gpu, r)
         gid = add_point_set!(tns_gpu, gpu_coords)
-        set_symmetric_search!(tns_gpu, gid, gid); run!(tns_gpu)
+        set_active_search!(tns_gpu, gid, gid); run!(tns_gpu)
         e_gpu = build_edges(tns_gpu, gid, gid)
 
         # Filter out points within an ε band of the radius — last-ULP FMA
@@ -75,7 +75,7 @@ else
         empty_coords = CuArray(zeros(Float32, 3, 0))
         tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
         id = add_point_set!(tns, empty_coords)
-        set_symmetric_search!(tns, id, id); run!(tns)
+        set_active_search!(tns, id, id); run!(tns)
         e = build_edges(tns, id, id)
 
         @test length(e.senders)   == 0
@@ -92,7 +92,7 @@ else
 
         tns = TNS(Float32); set_search_radius!(tns, r)
         gid = add_point_set!(tns, gpu_coords)
-        set_symmetric_search!(tns, gid, gid); run!(tns)
+        set_active_search!(tns, gid, gid); run!(tns)
         e = build_edges(tns, gid, gid)
 
         n_edges = length(e.senders)

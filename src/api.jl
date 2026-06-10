@@ -70,6 +70,14 @@ function resize_point_set!(tns::TNS{T,NDIMS}, set_id::Integer, coords::AbstractM
     return tns
 end
 
+"""
+    update_point_set!(tns, set_id, coords) -> tns
+
+Julia-only convenience over `resize_point_set!`: refresh the coordinates of
+a point set under a strict same-`N` precondition. Throws `DimensionMismatch`
+if `N` changes — callers who genuinely need a different `N` should use
+`resize_point_set!` instead. Not part of the upstream C++ TreeNSearch API.
+"""
 function update_point_set!(tns::TNS{T,NDIMS}, set_id::Integer, coords::AbstractMatrix{T}) where {T,NDIMS}
     size(coords, 1) == NDIMS || throw(DimensionMismatch("coords must be ($NDIMS, N)"))
     ps = tns.point_sets[set_id]
@@ -100,12 +108,6 @@ function set_active_search!(tns::TNS{T,NDIMS}, q::Integer, t::Integer) where {T,
     coords_like = tns.point_sets[q].coords
     push!(tns.neighbor_buffers, NeighborBuffer(coords_like))
     push!(tns.edge_buffers, make_edge_buffer(T, NDIMS, coords_like))
-    return tns
-end
-
-function set_symmetric_search!(tns::TNS, a::Integer, b::Integer)
-    set_active_search!(tns, a, b)
-    a != b && set_active_search!(tns, b, a)
     return tns
 end
 
@@ -283,17 +285,20 @@ end
 # ---------------- z-sort --------------------------------------------------
 
 """
-    prepare_zsort!(tns, set_id) -> tns
+    prepare_zsort!(tns) -> tns
 
-Precondition check: asserts that the permutation for `set_id` is populated
-(i.e. `run!(tns)` has been called since the last build). Does not allocate or
-mutate state — call this when you want a clear error before invoking
-`apply_zsort!` from a hot loop. It is safe but unnecessary to call it every
-step; `apply_zsort!` itself does not depend on it.
+Precondition check matching the C++ TreeNSearch API: asserts that the
+permutation for every registered point set is populated (i.e. `run!(tns)`
+has been called since the last build). Does not allocate or mutate state —
+call this when you want a clear error before invoking `apply_zsort!` from
+a hot loop. It is safe but unnecessary to call it every step;
+`apply_zsort!` itself does not depend on it.
 """
-function prepare_zsort!(tns::TNS, set_id::Integer)
-    length(tns.permutation[set_id]) == tns.point_sets[set_id].n ||
-        error("prepare_zsort!: call run! first so the permutation is available")
+function prepare_zsort!(tns::TNS)
+    for set_id in eachindex(tns.point_sets)
+        length(tns.permutation[set_id]) == tns.point_sets[set_id].n ||
+            error("prepare_zsort!: call run! first so the permutation for set $set_id is available")
+    end
     return tns
 end
 

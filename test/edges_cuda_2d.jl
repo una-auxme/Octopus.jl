@@ -24,12 +24,12 @@ else
 
         tns_cpu = TNS(Float32; ndims=2); set_search_radius!(tns_cpu, r)
         cid = add_point_set!(tns_cpu, cpu_coords)
-        set_symmetric_search!(tns_cpu, cid, cid); run!(tns_cpu)
+        set_active_search!(tns_cpu, cid, cid); run!(tns_cpu)
         e_cpu = build_edges(tns_cpu, cid, cid)
 
         tns_gpu = TNS(Float32; ndims=2); set_search_radius!(tns_gpu, r)
         gid = add_point_set!(tns_gpu, gpu_coords)
-        set_symmetric_search!(tns_gpu, gid, gid); run!(tns_gpu)
+        set_active_search!(tns_gpu, gid, gid); run!(tns_gpu)
         e_gpu = build_edges(tns_gpu, gid, gid)
 
         ε = r * 1f-4
@@ -70,7 +70,7 @@ else
 
         tns = TNS(Float32; ndims=2); set_search_radius!(tns, r)
         gid = add_point_set!(tns, gpu_coords)
-        set_symmetric_search!(tns, gid, gid); run!(tns)
+        set_active_search!(tns, gid, gid); run!(tns)
         e = build_edges(tns, gid, gid)
 
         n_edges = length(e.senders)

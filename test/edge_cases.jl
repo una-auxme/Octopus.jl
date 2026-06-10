@@ -14,7 +14,7 @@ using Random
     empty3 = Matrix{Float32}(undef, 3, 0)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, empty3)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test tns.trees[id].n_nodes == Int32(0)
     @test length(tns.permutation[id]) == 0
@@ -24,7 +24,7 @@ end
     empty3 = Matrix{Float32}(undef, 3, 0)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, empty3)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     e = build_edges(tns, id, id)
     @test length(e.senders)   == 0
@@ -37,7 +37,7 @@ end
     empty3 = Matrix{Float32}(undef, 3, 0)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, empty3)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     materialize_all_neighbors!(tns)
     pair_idx = findfirst(==((Int32(id), Int32(id))), tns.active_pairs)
@@ -50,7 +50,7 @@ end
     empty2 = Matrix{Float32}(undef, 2, 0)
     tns = TNS(Float32; ndims=2); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, empty2)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test tns.trees[id].n_nodes == Int32(0)
     e = build_edges(tns, id, id)
@@ -65,7 +65,7 @@ end
     coords = Float32[0 r; 0 0; 0 0]                       # two points on x-axis at d=1
     tns = TNS(Float32); set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test Int32(2) in get_neighborlist(tns, id, id, 1)
     @test Int32(1) in get_neighborlist(tns, id, id, 2)
@@ -76,7 +76,7 @@ end
     coords = Float32[0 (1.001f0 * r); 0 0; 0 0]
     tns = TNS(Float32); set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test isempty(get_neighborlist(tns, id, id, 1))
     @test isempty(get_neighborlist(tns, id, id, 2))
@@ -87,7 +87,7 @@ end
     coords = Float32[0 r; 0 0]
     tns = TNS(Float32; ndims=2); set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test Int32(2) in get_neighborlist(tns, id, id, 1)
 end
@@ -101,7 +101,7 @@ end
     coords = zeros(Float32, 3, n)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     # Every other point is a neighbor of every point (excluding self).
     for i in 1:n
@@ -114,7 +114,7 @@ end
     coords = zeros(Float32, 2, n)
     tns = TNS(Float32; ndims=2); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     for i in 1:n
         @test length(get_neighborlist(tns, id, id, i)) == n - 1
@@ -130,7 +130,7 @@ end
     coords = 2f0 .* rand(Float32, 3, 200) .- 1f0   # in [-1, 1]
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     # Spot-check against brute force on a few points.
@@ -153,7 +153,7 @@ end
     coords = rand(Float32, 3, 200)
     tns = TNS(Float32); set_search_radius!(tns, 1f-8)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     for i in 1:size(coords, 2)
         @test isempty(get_neighborlist(tns, id, id, i))
@@ -166,7 +166,7 @@ end
     coords = rand(Float32, 3, n)
     tns = TNS(Float32); set_search_radius!(tns, 100f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     for i in 1:n
         @test length(get_neighborlist(tns, id, id, i)) == n - 1
@@ -180,7 +180,7 @@ end
     coords = zeros(Float32, 3, n)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     perm = tns.permutation[id]
     @test sort(perm) == collect(Int32(1):Int32(n))

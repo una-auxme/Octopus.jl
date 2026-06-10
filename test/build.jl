@@ -80,7 +80,7 @@ end
     tns = TNS(Float32)
     set_search_radius!(tns, 0.08f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     assert_tree_invariants(tns, id)
 end
@@ -94,7 +94,7 @@ end
     tns = TNS(Float32)
     set_search_radius!(tns, 0.05f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     assert_tree_invariants(tns, id)
 end
@@ -104,7 +104,7 @@ end
     tns = TNS(Float32)
     set_search_radius!(tns, 1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test tns.trees[id].n_nodes == Int32(1)
     @test TreeNSearch.get_neighborlist(tns, id, id, 1) == Int32[]

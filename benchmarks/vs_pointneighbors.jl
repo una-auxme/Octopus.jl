@@ -52,7 +52,7 @@ function tns_total(coords::AbstractMatrix{T}, r::T) where {T}
     tns = TNS(T)
     set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     total = Threads.Atomic{Int}(0)
     n = size(coords, 2)
@@ -102,13 +102,13 @@ function time_tns_build_query(coords::AbstractMatrix{T}, r::T) where {T}
         tns = TNS($T)
         set_search_radius!(tns, $r)
         id = add_point_set!(tns, $coords)
-        set_symmetric_search!(tns, id, id)
+        set_active_search!(tns, id, id)
         run!(tns)
     end samples=3 evals=1 seconds=30
 
     # Prepare once for query timing.
     tns = TNS(T); set_search_radius!(tns, r)
-    id = add_point_set!(tns, coords); set_symmetric_search!(tns, id, id); run!(tns)
+    id = add_point_set!(tns, coords); set_active_search!(tns, id, id); run!(tns)
     n = size(coords, 2)
     total_ref = Threads.Atomic{Int}(0)
     query_bench = @benchmark begin

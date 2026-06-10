@@ -20,9 +20,9 @@ end
     tns = TNS(Float32)
     set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
-    prepare_zsort!(tns, id)
+    prepare_zsort!(tns)
 
     masses = rand(Float32, 200)
     sorted = apply_zsort!(tns, id, masses)
@@ -38,7 +38,7 @@ end
     tns = TNS(Float32)
     set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     velocities = rand(Float32, 4, 200)
@@ -54,7 +54,7 @@ end
     tns = TNS(Float32)
     set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     feats = rand(Float32, 3, 3, 50)
@@ -66,5 +66,5 @@ end
     tns = TNS(Float32)
     set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    @test_throws ErrorException prepare_zsort!(tns, id)
+    @test_throws ErrorException prepare_zsort!(tns)
 end

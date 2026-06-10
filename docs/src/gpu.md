@@ -11,7 +11,7 @@ xyz = CUDA.rand(Float32, 3, 100_000)
 tns = TNS(Float32; ndims = 3)
 set_search_radius!(tns, 0.02f0)
 id = add_point_set!(tns, xyz)
-set_symmetric_search!(tns, id, id)
+set_active_search!(tns, id, id)
 run!(tns)
 ```
 
@@ -28,8 +28,9 @@ There are two ways to iterate neighbors from inside your own `@cuda` kernels:
 The two paths have **identical semantics**: for every neighbor `j` of point
 `i` whose distance is `≤ search_radius`, the body executes with `j` bound to
 the neighbor index. The user is responsible for filtering the self-pair
-`j == i` if their workflow needs it (matches `foreach_point_neighbor` in
-PointNeighbors.jl).
+`j == i` if their workflow needs it (mirroring the paper's
+`for_each_neighbor` contract — the host's `for_each_neighbor` does not
+filter self either).
 
 ## When the macro matters
 
@@ -38,8 +39,8 @@ closure form forces Julia to box that scalar. On GPU the box lives in global
 memory, so every emitted edge does a load + store of the cursor. The macro
 form keeps the cursor in a register and writes it back once.
 
-Measured on an NVIDIA A30 with the GraphNetSim-style `point_neighbor_ns`
-write-pass:
+Measured on an NVIDIA A30 with a write-pass kernel that maintains a
+per-thread edge cursor:
 
 | Scene | Closure | Macro | Speedup |
 |---|---:|---:|---:|
@@ -47,7 +48,7 @@ write-pass:
 | 2D N=5k  | 9.87 ms | 5.63 ms | **1.75×** |
 | 2D N=20k | 63.4 ms | 44.4 ms | **1.43×** |
 
-End-to-end `point_neighbor_ns` (build + count + alloc + write):
+End-to-end build + count + alloc + write (lower is better):
 
 | Scene | TreeNSearch (macro) | PointNeighbors.jl | Speedup |
 |---|---:|---:|---:|

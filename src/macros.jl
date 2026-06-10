@@ -5,7 +5,7 @@
 # which on GPU forces a global-memory round-trip per emitted edge. The macros
 # below expand the same traversal directly into the user's kernel so cursors
 # can stay in registers and constants like `1/radius` precompute. End-to-end
-# measured speedup on the GraphNetSim-style write-pass kernel:
+# measured speedup on a write-pass kernel (per-edge cursor in a thread-local):
 #
 #   2D N=1k  : 2.05x        (closure 1.62 ms -> macro 0.79 ms)
 #   2D N=5k  : 1.75x        (closure 9.87 ms -> macro 5.63 ms)

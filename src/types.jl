@@ -48,11 +48,12 @@ NeighborBuffer(like::AbstractArray) = NeighborBuffer(
     false,
 )
 
-# Flat-COO edge representation for GNN consumers. `senders[k]` is the target
-# index j; `receivers[k]` is the query index i. `rel_displacement` is the
-# normalized (coords_q[:,i] - coords_t[:,j]) / radius — query minus target,
-# matching PointNeighbors.jl's pos_diff convention. `rel_dist_norm` is
-# ‖coords_q[:,i] - coords_t[:,j]‖ / radius.
+# Julia-only extension on top of the paper's API: a flat-COO edge representation
+# for downstream consumers (e.g. graph neural networks). Not part of the upstream
+# TreeNSearch interface. `senders[k]` is the target index j; `receivers[k]` is
+# the query index i. `rel_displacement` is the normalized
+# (coords_q[:,i] - coords_t[:,j]) / radius (query minus target). `rel_dist_norm`
+# is ‖coords_q[:,i] - coords_t[:,j]‖ / radius.
 mutable struct EdgeBuffer{T,VI<:AbstractVector{Int32},MF<:AbstractMatrix{T}}
     senders::VI            # length n_edges
     receivers::VI          # length n_edges

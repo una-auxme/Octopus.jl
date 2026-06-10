@@ -13,7 +13,7 @@ else
         tns = TNS(Float32)
         set_search_radius!(tns, 0.1f0)
         id = add_point_set!(tns, gpu_coords)
-        set_symmetric_search!(tns, id, id)
+        set_active_search!(tns, id, id)
         run!(tns)
 
         masses_h = rand(Float32, 256)
@@ -32,7 +32,7 @@ else
         tns = TNS(Float32)
         set_search_radius!(tns, 0.1f0)
         id = add_point_set!(tns, gpu_coords)
-        set_symmetric_search!(tns, id, id)
+        set_active_search!(tns, id, id)
         run!(tns)
 
         feats_h = rand(Float32, 5, 256)
@@ -55,7 +55,7 @@ else
         tns = TNS(Float32)
         set_search_radius!(tns, 0.1f0)
         id = add_point_set!(tns, gpu_coords)
-        set_symmetric_search!(tns, id, id)
+        set_active_search!(tns, id, id)
         run!(tns)
 
         feats = CuArray(rand(Float32, 2, 2, 64))

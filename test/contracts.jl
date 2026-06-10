@@ -11,7 +11,7 @@ using Random
     for sym in (:TNS,
                 :set_search_radius!, :set_refit_mode!,
                 :add_point_set!, :resize_point_set!, :update_point_set!,
-                :set_active_search!, :set_symmetric_search!,
+                :set_active_search!,
                 :run!,
                 :for_each_neighbor, :for_each_neighbor_device,
                 :get_neighborlist, :materialize_all_neighbors!,
@@ -44,18 +44,20 @@ end
     @test length(tns.edge_buffers)     == n_ebufs_1
 end
 
-@testset "set_symmetric_search!(tns, a, a) registers exactly one pair" begin
+@testset "set_active_search!(tns, id, id) registers exactly one self-pair" begin
     Random.seed!(1002)
     coords = rand(Float32, 3, 50)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
 
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     @test length(tns.active_pairs) == 1
     @test tns.active_pairs[1] == (Int32(id), Int32(id))
 end
 
-@testset "set_symmetric_search!(tns, a, b) registers both directions" begin
+@testset "set_active_search!(tns, a, b) is directed; reverse must be registered separately" begin
+    # Matches the paper's semantics: each (qid, tid) pair is its own directed
+    # search. Users wanting both directions call set_active_search! twice.
     Random.seed!(1003)
     A = rand(Float32, 3, 50)
     B = rand(Float32, 3, 60)
@@ -63,8 +65,12 @@ end
     a = add_point_set!(tns, A)
     b = add_point_set!(tns, B)
 
-    set_symmetric_search!(tns, a, b)
+    set_active_search!(tns, a, b)
     @test (Int32(a), Int32(b)) in tns.active_pairs
+    @test !((Int32(b), Int32(a)) in tns.active_pairs)
+    @test length(tns.active_pairs) == 1
+
+    set_active_search!(tns, b, a)
     @test (Int32(b), Int32(a)) in tns.active_pairs
     @test length(tns.active_pairs) == 2
 end
@@ -74,7 +80,7 @@ end
     coords = rand(Float32, 3, 200)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
 
     run!(tns)
     perm1 = copy(tns.permutation[id])
@@ -92,7 +98,7 @@ end
     coords = rand(Float32, 3, 200)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test all(.!tns.dirty)
 
@@ -116,7 +122,7 @@ end
     coords = rand(Float32, 3, 100)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     @test !tns.dirty[id]
 
@@ -134,7 +140,7 @@ end
     coords1 = rand(Float32, 3, 100)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords1)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     # resize_point_set! supports a different N (or even 0).
@@ -160,7 +166,7 @@ end
     A = rand(Float32, 3, 100)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, A)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     e1 = build_edges(tns, id, id)
     # Snapshot before the rebuild — the returned NamedTuple aliases the
@@ -192,7 +198,7 @@ end
     coords = rand(Float32, 3, 30)
     tns = TNS(Float32); set_search_radius!(tns, 2.0f0)  # large: every point is its own nbr
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     saw_self = false
@@ -212,7 +218,7 @@ end
     coords = rand(Float32, 3, 150)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     e = build_edges(tns, id, id)
 
@@ -231,7 +237,7 @@ end
     coords = rand(Float32, 3, 50)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    # Note: no set_active_search! / set_symmetric_search! before run!
+    # Note: no set_active_search! before run!
     run!(tns)
     @test_throws ErrorException build_edges!(tns, id, id)
 end
@@ -241,7 +247,7 @@ end
     coords = rand(Float32, 3, 150)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     materialize_all_neighbors!(tns)
     pair_idx = findfirst(==((Int32(id), Int32(id))), tns.active_pairs)
@@ -264,12 +270,12 @@ end
 
     tns1 = TNS(Float32); set_search_radius!(tns1, 0.1f0)
     a = add_point_set!(tns1, A)
-    set_symmetric_search!(tns1, a, a)
+    set_active_search!(tns1, a, a)
     run!(tns1)
 
     tns2 = TNS(Float32); set_search_radius!(tns2, 0.2f0)
     b = add_point_set!(tns2, B)
-    set_symmetric_search!(tns2, b, b)
+    set_active_search!(tns2, b, b)
     run!(tns2)
 
     @test length(tns1.point_sets) == 1
@@ -289,7 +295,7 @@ end
 
 @testset "asymmetric search direction matters" begin
     # Querying A→B is not the same registration as B→A; both must be added
-    # explicitly (or via set_symmetric_search!).
+    # explicitly with separate set_active_search! calls.
     Random.seed!(1014)
     A = rand(Float32, 3, 30)
     B = rand(Float32, 3, 40)

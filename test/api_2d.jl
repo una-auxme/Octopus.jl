@@ -48,7 +48,7 @@ end
     r = 0.1f0
     tns = TNS(Float32; ndims=2); set_search_radius!(tns, r)
     id = add_point_set!(tns, coords)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     for i in 1:size(coords, 2)
@@ -68,7 +68,7 @@ end
     r = 0.1f0
     tns = TNS(Float32; ndims=2); set_search_radius!(tns, r)
     id = add_point_set!(tns, coords1)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
     e1 = build_edges(tns, id, id)
     n1 = length(e1.senders)

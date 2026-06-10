@@ -210,7 +210,7 @@ function tns_point_neighbor_ns_gpu(pos_orig::CuArray{Float32}, radius::Float32)
     tns = TNS(Float32; ndims = 3)
     set_search_radius!(tns, radius)
     id = add_point_set!(tns, pos3)
-    set_symmetric_search!(tns, id, id)
+    set_active_search!(tns, id, id)
     run!(tns)
 
     dv = device_view(tns, id, id)
