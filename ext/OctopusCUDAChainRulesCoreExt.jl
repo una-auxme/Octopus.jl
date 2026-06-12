@@ -70,8 +70,12 @@ function _build_edges_diff_pullback_kernel!(grad_coords::CuDeviceMatrix{T},
     if use_disp
         @inbounds for d in Int32(1):D
             val = Δdisp[d, idx] / radius
-            CUDA.atomic_add!(pointer(grad_coords, (j - Int32(1)) * Int32(rows) + d), val)
-            CUDA.atomic_add!(pointer(grad_coords, (i - Int32(1)) * Int32(rows) + d), -val)
+            # rel_displacement[d,k] = (coords[d,i] - coords[d,j]) / radius with
+            # i = receiver, j = sender, so ∂/∂coords_i = +1/r and ∂/∂coords_j = -1/r:
+            # + on the receiver, - on the sender (matches the CPU rrule and the
+            # dist branch below). The previous order was flipped.
+            CUDA.atomic_add!(pointer(grad_coords, (i - Int32(1)) * Int32(rows) + d), val)
+            CUDA.atomic_add!(pointer(grad_coords, (j - Int32(1)) * Int32(rows) + d), -val)
         end
     end
 

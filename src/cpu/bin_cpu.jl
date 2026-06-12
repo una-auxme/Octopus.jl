@@ -1,6 +1,4 @@
 # Phase 1: bin every particle to a grid cell and compute its Morton code.
-# Phase 3 (RLE of non-empty cells) also lives here since it reads the same
-# permuted Morton array.
 #
 # Dispatch is by coord row count (3D vs 2D) via SVector{NDIMS,T} origin type.
 
@@ -88,36 +86,4 @@ function bin_cpu!(morton_codes::Vector{UInt64},
         end
     end
     return morton_codes
-end
-
-# After `sort_by_key_cpu!(perm, morton_codes)`, consecutive entries in
-# `morton_codes[perm]` with equal code form a non-empty cell. We emit:
-#   cell_morton[k]  = morton code of cell k
-#   cell_first[k]   = first index into perm for cell k
-#   cell_last[k]    = last index into perm for cell k  (inclusive)
-function rle_cells_cpu!(cell_morton::Vector{UInt64},
-                        cell_first::Vector{Int32},
-                        cell_last::Vector{Int32},
-                        morton_codes::Vector{UInt64},
-                        perm::Vector{Int32})
-    n = length(perm)
-    empty!(cell_morton); empty!(cell_first); empty!(cell_last)
-    n == 0 && return (cell_morton, cell_first, cell_last)
-
-    @inbounds begin
-        push!(cell_morton, morton_codes[perm[1]])
-        push!(cell_first, Int32(1))
-        prev = morton_codes[perm[1]]
-        for i in 2:n
-            m = morton_codes[perm[i]]
-            if m != prev
-                push!(cell_last, Int32(i - 1))
-                push!(cell_morton, m)
-                push!(cell_first, Int32(i))
-                prev = m
-            end
-        end
-        push!(cell_last, Int32(n))
-    end
-    return (cell_morton, cell_first, cell_last)
 end

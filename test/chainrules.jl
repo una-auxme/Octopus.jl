@@ -176,3 +176,50 @@ end
     out_run = pb_run(1.0)
     @test all(t -> t isa ChainRulesCore.NoTangent, out_run)
 end
+
+# ---- 8. GPU rrule matches the (FD-verified) CPU rrule --------------------
+# The GPU `build_edges_diff` rrule is a SEPARATE hand-written atomic-add kernel
+# (OctopusCUDAChainRulesCoreExt), so the finite-difference tests above —
+# all CPU — do not exercise it. This guards the displacement/distance
+# sign-convention regression: the kernel once applied the rel_displacement term
+# with `+sender, −receiver` while the rel_dist_norm term used `+receiver,
+# −sender`, so `g_gpu == −g_cpu` on the displacement contribution (full-loss
+# cos(GPU,CPU) ≈ 0.77; disp-only ≈ −1). CPU is the reference because it is
+# finite-difference-verified above; both run Float32 so the edge sets — and
+# hence the element-wise comparison — are exact. The `:disp`-only case is the
+# one that pins the sign. Requires JULIA_OCTOPUS_TEST_CUDA=1.
+if get(ENV, "JULIA_OCTOPUS_TEST_CUDA", "0") == "1"
+    using CUDA
+    if !CUDA.functional()
+        @info "CUDA unavailable; skipping GPU build_edges_diff gradient tests"
+    else
+        function _edge_loss(c, radius, ndims, mode)
+            T = eltype(c)
+            tns = TNS(T; ndims = ndims)
+            set_search_radius!(tns, radius)
+            i = add_point_set!(tns, c)
+            set_active_search!(tns, i, i)
+            run!(tns)
+            e = build_edges_diff(c, tns, i, radius)
+            if mode === :disp
+                return sum(abs2, e.rel_displacement)
+            elseif mode === :dist
+                return sum(abs2, e.rel_dist_norm)
+            else
+                return sum(abs2, e.rel_displacement) + T(0.5) * sum(abs2, e.rel_dist_norm)
+            end
+        end
+
+        @testset "GPU build_edges_diff: $(D)D $(mode) matches CPU rrule" for
+                D in (2, 3), mode in (:full, :disp, :dist)
+            Random.seed!(8100 + D)
+            coords = rand(Float32, D, 64)
+            radius = 0.25f0
+
+            g_cpu = Zygote.gradient(c -> _edge_loss(c, radius, D, mode), coords)[1]
+            g_gpu = Zygote.gradient(c -> _edge_loss(c, radius, D, mode), CuArray(coords))[1]
+
+            @test Array(g_gpu) ≈ g_cpu rtol = 1.0f-3 atol = 1.0f-5
+        end
+    end
+end

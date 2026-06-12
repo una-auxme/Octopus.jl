@@ -6,7 +6,7 @@ using StaticArrays
 import Octopus: _run_cuda!, _device_view, for_each_neighbor_device,
                     _build_edges_cuda!, _apply_zsort_cuda,
                     TNS, PointSet, Octree, NeighborBuffer, EdgeBuffer,
-                    bin_cpu!, sort_by_key_cpu!, rle_cells_cpu!,
+                    bin_cpu!, sort_by_key_cpu!,
                     build_cpu!, refit_bounds_cpu!, _point_origin,
                     ensure_capacity!
 
@@ -233,9 +233,6 @@ function _run_cuda!(tns::TNS{T,NDIMS}) where {T,NDIMS}
         perm_cpu = Vector{Int32}(undef, n)
         sort_by_key_cpu!(perm_cpu, morton_cpu)
 
-        cell_m = UInt64[]; cell_f = Int32[]; cell_l = Int32[]
-        rle_cells_cpu!(cell_m, cell_f, cell_l, morton_cpu, perm_cpu)
-
         # Build on CPU using a CPU scratch Octree, then copy arrays to GPU.
         cpu_tree = Octree{T,NDIMS}(coords_cpu)
         build_cpu!(cpu_tree, morton_cpu, perm_cpu, tns.target_leaf_size)
@@ -390,15 +387,23 @@ function _build_edges_cuda!(tns::TNS{T,NDIMS}, pair_idx::Integer, qid::Integer, 
 
     dv = _device_view(tns, qid, tid)
 
-    counts = CUDA.zeros(Int32, n_q)
+    # Uninitialized: the count kernel writes every entry counts[1:n_q] before
+    # cumsum reads it, so a zero-fill (CUDA.zeros) would be wasted work.
+    counts = similar(coords_q, Int32, n_q)
     threads = 128
     blocks  = cld(n_q, threads)
     @cuda threads=threads blocks=blocks _count_edges_kernel!(counts, dv, exclude_self, Int32(n_q))
 
-    # Exclusive scan: offsets[i] = sum(counts[1:i-1]).
-    inclusive = CUDA.cumsum(counts)
-    offsets   = inclusive .- counts
-    n_edges   = Int(CUDA.@allowscalar inclusive[end])
+    # Exclusive scan: offsets[i] = sum(counts[1:i-1]). `CUDA.cumsum` would
+    # promote Int32→Int64 and allocate a fresh result array; `cumsum!` into an
+    # Int32 buffer keeps the scan 4-byte (edge counts fit Int32 — buf.n_edges
+    # already assumes this) and writes in place. We then read the total and
+    # subtract in place to turn the inclusive scan into exclusive offsets,
+    # reusing the same buffer instead of allocating another device array.
+    offsets = similar(counts)
+    cumsum!(offsets, counts)
+    n_edges = Int(CUDA.@allowscalar offsets[end])
+    offsets .-= counts
 
     if length(buf.senders) != n_edges
         buf.senders   = similar(coords_q, Int32, n_edges)

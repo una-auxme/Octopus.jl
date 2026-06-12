@@ -157,12 +157,6 @@ function _run_cpu!(tns::TNS{T,NDIMS}) where {T,NDIMS}
         resize!(perm, n)
         sort_by_key_cpu!(perm, morton)
 
-        # RLE cells (scratch; not retained in tns state)
-        cell_morton = UInt64[]
-        cell_first = Int32[]
-        cell_last = Int32[]
-        rle_cells_cpu!(cell_morton, cell_first, cell_last, morton, perm)
-
         tree = tns.trees[sid]
         build_cpu!(tree, morton, perm, tns.target_leaf_size)
         refit_bounds_cpu!(tree, coords, perm)
@@ -230,7 +224,7 @@ function build_edges!(tns::TNS{T,NDIMS}, qid::Integer, tid::Integer) where {T,ND
         build_edges_cpu!(
             buf, tns.trees[tid], tns.permutation[tid],
             tns.point_sets[qid].coords, tns.point_sets[tid].coords,
-            tns.query_stacks[1], tns.radius, qid == tid,
+            tns.query_stacks[1], tns.build_scratch, tns.radius, qid == tid,
         )
     elseif tns.dev === :cuda
         _build_edges_cuda!(tns, pair_idx, qid, tid)

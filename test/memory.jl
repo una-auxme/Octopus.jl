@@ -82,3 +82,39 @@ end
     @info "inner barrier allocated bytes" n_alloc_inner
     @test n_alloc_inner == 0
 end
+
+@testset "build_edges / materialize don't allocate per edge" begin
+    # Regression guard: the count/fill passes use typed Ref{Int32} accumulators.
+    # A reassigned closure-captured local would box as Core.Box{Any} and
+    # re-allocate one heap Int per *edge* (megabytes at this N), so a steady
+    # call must allocate only a small N-independent constant. We measure at two
+    # sizes and require the larger not to allocate proportionally more — boxing
+    # would scale with edge count, the Ref path stays flat.
+    function steady_alloc(N)
+        Random.seed!(11)
+        coords = rand(Float32, 3, N)
+        tns = TNS(); set_search_radius!(tns, 0.02f0)
+        id = add_point_set!(tns, coords)
+        set_active_search!(tns, id, id)
+        run!(tns)
+        build_edges(tns, id, id)               # warm: compile + size buffers
+        materialize_all_neighbors!(tns)
+        a_edges = @allocated build_edges(tns, id, id)
+        a_mat   = @allocated materialize_all_neighbors!(tns)
+        return (a_edges, a_mat)
+    end
+
+    e_small, m_small = steady_alloc(20_000)
+    e_big,   m_big   = steady_alloc(80_000)   # 4× points ⇒ ~4× edges
+    @info "build_edges steady alloc (B)"        e_small e_big
+    @info "materialize steady alloc (B)"        m_small m_big
+
+    # Flat constant, not O(edges): a few hundred bytes regardless of N. The
+    # boxed version allocated ~4.6 MB at N=20k and grew with N.
+    @test e_big <= 1024
+    @test m_big <= 1024
+    # Explicitly assert no scaling: 4× the work must not mean materially more
+    # allocation (allow slack for measurement noise / GC bookkeeping).
+    @test e_big <= e_small + 256
+    @test m_big <= m_small + 256
+end

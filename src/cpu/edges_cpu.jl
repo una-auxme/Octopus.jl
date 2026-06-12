@@ -14,6 +14,7 @@ function build_edges_cpu!(
     coords_q::AbstractMatrix{T},
     coords_t::AbstractMatrix{T},
     stack::Vector{Int32},
+    counts::Vector{Int32},
     r::T,
     exclude_self::Bool,
 ) where {T}
@@ -21,26 +22,34 @@ function build_edges_cpu!(
     r_sq = r * r
     inv_r = inv(r)
 
-    # Pass A — counts. Local scratch; offsets are not stored on EdgeBuffer.
-    counts = Vector{Int32}(undef, n_q + 1)
+    # Pass A — counts. Reused scratch buffer (offsets are not stored on
+    # EdgeBuffer); the rrule snapshots the output arrays, so this transient
+    # may be mutated/reused across calls without affecting gradients.
+    ensure_capacity!(counts, n_q + 1)
+    resize!(counts, n_q + 1)
     @inbounds counts[1] = Int32(0)
 
+    # `cref`/`cur` are reused Refs, not closure-captured plain locals: a
+    # reassigned captured local boxes as Core.Box{Any} and re-allocates on
+    # every increment inside the leaf loop (one heap Int per edge). A typed
+    # Ref{Int32} stores in place — same inner-loop cost, zero allocation.
+    cref = Ref{Int32}(0)
     @inbounds for i in 1:n_q
         px = coords_q[1, i]; py = coords_q[2, i]; pz = coords_q[3, i]
-        c = Int32(0)
+        cref[] = Int32(0)
         i32 = Int32(i)
         if exclude_self
             _traverse_with_diff!(tree, coords_t, perm_t, stack, px, py, pz, r_sq) do j, _, _, _, _
                 if Int32(j) != i32
-                    c += Int32(1)
+                    cref[] += Int32(1)
                 end
             end
         else
             _traverse_with_diff!(tree, coords_t, perm_t, stack, px, py, pz, r_sq) do _, _, _, _, _
-                c += Int32(1)
+                cref[] += Int32(1)
             end
         end
-        counts[i + 1] = c
+        counts[i + 1] = cref[]
     end
 
     # Exclusive scan in place: counts[i+1] becomes the edge offset of point i+1.
@@ -65,31 +74,32 @@ function build_edges_cpu!(
     rdisp     = buf.rel_displacement
     rdist     = buf.rel_dist_norm
 
+    cur = Ref{Int32}(0)
     @inbounds for i in 1:n_q
         px = coords_q[1, i]; py = coords_q[2, i]; pz = coords_q[3, i]
-        cursor = counts[i]
+        cur[] = counts[i]
         i32 = Int32(i)
         if exclude_self
             _traverse_with_diff!(tree, coords_t, perm_t, stack, px, py, pz, r_sq) do j, dx, dy, dz, d2
                 if Int32(j) != i32
-                    cursor += Int32(1)
-                    senders[cursor]   = Int32(j)
-                    receivers[cursor] = i32
-                    rdisp[1, cursor] = -dx * inv_r
-                    rdisp[2, cursor] = -dy * inv_r
-                    rdisp[3, cursor] = -dz * inv_r
-                    rdist[1, cursor] = sqrt(d2) * inv_r
+                    k = cur[] + Int32(1); cur[] = k
+                    senders[k]   = Int32(j)
+                    receivers[k] = i32
+                    rdisp[1, k] = -dx * inv_r
+                    rdisp[2, k] = -dy * inv_r
+                    rdisp[3, k] = -dz * inv_r
+                    rdist[1, k] = sqrt(d2) * inv_r
                 end
             end
         else
             _traverse_with_diff!(tree, coords_t, perm_t, stack, px, py, pz, r_sq) do j, dx, dy, dz, d2
-                cursor += Int32(1)
-                senders[cursor]   = Int32(j)
-                receivers[cursor] = i32
-                rdisp[1, cursor] = -dx * inv_r
-                rdisp[2, cursor] = -dy * inv_r
-                rdisp[3, cursor] = -dz * inv_r
-                rdist[1, cursor] = sqrt(d2) * inv_r
+                k = cur[] + Int32(1); cur[] = k
+                senders[k]   = Int32(j)
+                receivers[k] = i32
+                rdisp[1, k] = -dx * inv_r
+                rdisp[2, k] = -dy * inv_r
+                rdisp[3, k] = -dz * inv_r
+                rdist[1, k] = sqrt(d2) * inv_r
             end
         end
     end
@@ -105,6 +115,7 @@ function build_edges_cpu!(
     coords_q::AbstractMatrix{T},
     coords_t::AbstractMatrix{T},
     stack::Vector{Int32},
+    counts::Vector{Int32},
     r::T,
     exclude_self::Bool,
 ) where {T}
@@ -112,25 +123,28 @@ function build_edges_cpu!(
     r_sq = r * r
     inv_r = inv(r)
 
-    counts = Vector{Int32}(undef, n_q + 1)
+    ensure_capacity!(counts, n_q + 1)
+    resize!(counts, n_q + 1)
     @inbounds counts[1] = Int32(0)
 
+    # See the 3D path: typed Refs avoid Core.Box{Any} per-edge re-allocation.
+    cref = Ref{Int32}(0)
     @inbounds for i in 1:n_q
         px = coords_q[1, i]; py = coords_q[2, i]
-        c = Int32(0)
+        cref[] = Int32(0)
         i32 = Int32(i)
         if exclude_self
             _traverse_with_diff!(tree, coords_t, perm_t, stack, px, py, r_sq) do j, _, _, _
                 if Int32(j) != i32
-                    c += Int32(1)
+                    cref[] += Int32(1)
                 end
             end
         else
             _traverse_with_diff!(tree, coords_t, perm_t, stack, px, py, r_sq) do _, _, _, _
-                c += Int32(1)
+                cref[] += Int32(1)
             end
         end
-        counts[i + 1] = c
+        counts[i + 1] = cref[]
     end
 
     @inbounds for i in 1:n_q
@@ -153,29 +167,30 @@ function build_edges_cpu!(
     rdisp     = buf.rel_displacement
     rdist     = buf.rel_dist_norm
 
+    cur = Ref{Int32}(0)
     @inbounds for i in 1:n_q
         px = coords_q[1, i]; py = coords_q[2, i]
-        cursor = counts[i]
+        cur[] = counts[i]
         i32 = Int32(i)
         if exclude_self
             _traverse_with_diff!(tree, coords_t, perm_t, stack, px, py, r_sq) do j, dx, dy, d2
                 if Int32(j) != i32
-                    cursor += Int32(1)
-                    senders[cursor]   = Int32(j)
-                    receivers[cursor] = i32
-                    rdisp[1, cursor] = -dx * inv_r
-                    rdisp[2, cursor] = -dy * inv_r
-                    rdist[1, cursor] = sqrt(d2) * inv_r
+                    k = cur[] + Int32(1); cur[] = k
+                    senders[k]   = Int32(j)
+                    receivers[k] = i32
+                    rdisp[1, k] = -dx * inv_r
+                    rdisp[2, k] = -dy * inv_r
+                    rdist[1, k] = sqrt(d2) * inv_r
                 end
             end
         else
             _traverse_with_diff!(tree, coords_t, perm_t, stack, px, py, r_sq) do j, dx, dy, d2
-                cursor += Int32(1)
-                senders[cursor]   = Int32(j)
-                receivers[cursor] = i32
-                rdisp[1, cursor] = -dx * inv_r
-                rdisp[2, cursor] = -dy * inv_r
-                rdist[1, cursor] = sqrt(d2) * inv_r
+                k = cur[] + Int32(1); cur[] = k
+                senders[k]   = Int32(j)
+                receivers[k] = i32
+                rdisp[1, k] = -dx * inv_r
+                rdisp[2, k] = -dy * inv_r
+                rdist[1, k] = sqrt(d2) * inv_r
             end
         end
     end
