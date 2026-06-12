@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # Float64 smoke tests. The README calls Float64 "works but unbenchmarked".

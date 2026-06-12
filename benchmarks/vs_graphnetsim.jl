@@ -10,7 +10,7 @@
 # Run:
 #   julia --project=benchmarks --threads=auto benchmarks/vs_graphnetsim.jl
 
-using TreeNSearch
+using Octopus
 using PointNeighbors
 using BenchmarkTools
 using Random
@@ -69,8 +69,8 @@ function pn_point_neighbor_ns(pos::Matrix{Float32}, radius::Float32)
 end
 
 # ------------------------------------------------------------------------
-# TreeNSearch port of the same operation.
-# TreeNSearch v0.1 is 3D-only — 2D coords are padded to 3D (z = 0) before
+# Octopus port of the same operation.
+# Octopus v0.1 is 3D-only — 2D coords are padded to 3D (z = 0) before
 # construction; edges are recomputed in the original D-dimensional space so
 # the output's rel_displacement matches what GraphNetSim expects.
 # ------------------------------------------------------------------------
@@ -215,7 +215,7 @@ fmt_bytes(b) = b < 2^20 ? @sprintf("%7.2f KB", b/1024) : @sprintf("%7.2f MB", b/
 
 function run_benchmark()
     println("\nGraphNetSim neighborhood-search benchmark")
-    println("TreeNSearch.jl vs PointNeighbors.jl, matching `point_neighbor_ns`")
+    println("Octopus.jl vs PointNeighbors.jl, matching `point_neighbor_ns`")
     println("Julia: ", VERSION, "  threads: ", Threads.nthreads())
     println()
 
@@ -254,7 +254,7 @@ function run_benchmark()
                 "PointNeighbors", fmt_time(median(b_pn.times)),
                 fmt_bytes(median(b_pn.memory)), fmt_bytes(nhs_bytes))
         @printf("%-16s %15s %15s   memory overhead: %s\n",
-                "TreeNSearch", fmt_time(median(b_tns.times)),
+                "Octopus", fmt_time(median(b_tns.times)),
                 fmt_bytes(median(b_tns.memory)), fmt_bytes(tns_bytes))
 
         # Derived ratios

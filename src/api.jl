@@ -1,5 +1,5 @@
 # Public API. Orchestrates the CPU phase sequence; dispatches to the CUDA
-# extension via hooks declared in TreeNSearch.jl when the user passes GPU
+# extension via hooks declared in Octopus.jl when the user passes GPU
 # coords.
 
 using StaticArrays

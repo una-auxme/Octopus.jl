@@ -1,16 +1,16 @@
 using Test
-using TreeNSearch
+using Octopus
 using ChainRulesCore
 using Zygote
 using Random
 
 # Pre-publication checks for the ChainRulesCore extension.
 #
-# Gated behind JULIA_TREENSEARCH_TEST_CHAINRULES=1 (see runtests.jl) because
+# Gated behind JULIA_OCTOPUS_TEST_CHAINRULES=1 (see runtests.jl) because
 # Zygote + transitive deps add several seconds of precompile time. Run on
 # release tags / before publication, not on every commit:
 #
-#     JULIA_TREENSEARCH_TEST_CHAINRULES=1 julia --project=. -e 'using Pkg; Pkg.test()'
+#     JULIA_OCTOPUS_TEST_CHAINRULES=1 julia --project=. -e 'using Pkg; Pkg.test()'
 
 # 4-point central difference. Smaller systematic error than the usual
 # 2-point form, important when the analytic gradient is tight to 1e-7.

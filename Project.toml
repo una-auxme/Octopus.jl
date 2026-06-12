@@ -1,6 +1,6 @@
-name = "TreeNSearch"
+name = "Octopus"
 uuid = "49bb3e92-56cb-4d34-aed6-8ee8ef58b458"
-authors = ["TreeNSearch.jl contributors"]
+authors = ["Octopus.jl contributors"]
 version = "0.1.0"
 
 [deps]
@@ -16,9 +16,9 @@ CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 
 [extensions]
-TreeNSearchCUDAExt = "CUDA"
-TreeNSearchChainRulesCoreExt = "ChainRulesCore"
-TreeNSearchCUDAChainRulesCoreExt = ["CUDA", "ChainRulesCore"]
+OctopusCUDAExt = "CUDA"
+OctopusChainRulesCoreExt = "ChainRulesCore"
+OctopusCUDAChainRulesCoreExt = ["CUDA", "ChainRulesCore"]
 
 [compat]
 Adapt = "4"

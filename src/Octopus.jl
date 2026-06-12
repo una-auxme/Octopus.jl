@@ -1,4 +1,4 @@
-module TreeNSearch
+module Octopus
 
 using StaticArrays
 using Polyester: @batch
@@ -38,14 +38,14 @@ export device_view
 export @for_each_neighbor_device_inline
 export @for_each_neighbor_device_inline_2d
 
-# Hooks filled in by TreeNSearchCUDAExt when CUDA.jl is loaded.
+# Hooks filled in by OctopusCUDAExt when CUDA.jl is loaded.
 function _run_cuda! end
 function _device_view end
 function _for_each_neighbor_device end
 function _build_edges_cuda! end
 function _apply_zsort_cuda end
 function _cuda_error(msg::AbstractString)
-    error("TreeNSearch: $msg")
+    error("Octopus: $msg")
 end
 
 """
@@ -61,8 +61,8 @@ The user is responsible for keeping `coords` in sync with `tns` — typically
 by calling `update_point_set!(tns, id, coords); run!(tns)` under
 `Zygote.@ignore` before this function.
 
-Loaded via the `TreeNSearchChainRulesCoreExt` and
-`TreeNSearchCUDAChainRulesCoreExt` weak extensions; requires
+Loaded via the `OctopusChainRulesCoreExt` and
+`OctopusCUDAChainRulesCoreExt` weak extensions; requires
 `using ChainRulesCore` (and `using CUDA` for the GPU path).
 """
 function build_edges_diff end

@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # Exercise the build via the public API and assert tree invariants.
@@ -107,5 +107,5 @@ end
     set_active_search!(tns, id, id)
     run!(tns)
     @test tns.trees[id].n_nodes == Int32(1)
-    @test TreeNSearch.get_neighborlist(tns, id, id, 1) == Int32[]
+    @test Octopus.get_neighborlist(tns, id, id, 1) == Int32[]
 end

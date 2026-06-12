@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # brute_force_neighbors_2d is defined in test/build_2d.jl, included by

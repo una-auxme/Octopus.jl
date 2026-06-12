@@ -1,9 +1,9 @@
-module TreeNSearchCUDAExt
+module OctopusCUDAExt
 
-using TreeNSearch
+using Octopus
 using CUDA
 using StaticArrays
-import TreeNSearch: _run_cuda!, _device_view, for_each_neighbor_device,
+import Octopus: _run_cuda!, _device_view, for_each_neighbor_device,
                     _build_edges_cuda!, _apply_zsort_cuda,
                     TNS, PointSet, Octree, NeighborBuffer, EdgeBuffer,
                     bin_cpu!, sort_by_key_cpu!, rle_cells_cpu!,
@@ -11,7 +11,7 @@ import TreeNSearch: _run_cuda!, _device_view, for_each_neighbor_device,
                     ensure_capacity!
 
 function __init__()
-    TreeNSearch._CUDA_EXT_LOADED[] = true
+    Octopus._CUDA_EXT_LOADED[] = true
 end
 
 # ---------------- device view ----------------------------------------------
@@ -286,7 +286,7 @@ function _count_edges_kernel!(counts, dv::DeviceView{T,3}, exclude_self, n_q) wh
     i > n_q && return nothing
     i32 = Int32(i)
     c = Int32(0)
-    TreeNSearch.@for_each_neighbor_device_inline dv i j begin
+    Octopus.@for_each_neighbor_device_inline dv i j begin
         if !exclude_self || j != i32
             c += Int32(1)
         end
@@ -300,7 +300,7 @@ function _count_edges_kernel!(counts, dv::DeviceView{T,2}, exclude_self, n_q) wh
     i > n_q && return nothing
     i32 = Int32(i)
     c = Int32(0)
-    TreeNSearch.@for_each_neighbor_device_inline_2d dv i j begin
+    Octopus.@for_each_neighbor_device_inline_2d dv i j begin
         if !exclude_self || j != i32
             c += Int32(1)
         end
@@ -319,7 +319,7 @@ function _fill_edges_kernel_3d!(senders, receivers, rdisp, rdist,
     py = @inbounds dv.coords_q[2, i]
     pz = @inbounds dv.coords_q[3, i]
     inv_r_local = inv_r
-    TreeNSearch.@for_each_neighbor_device_inline dv i j begin
+    Octopus.@for_each_neighbor_device_inline dv i j begin
         if !exclude_self || j != i32
             cursor += Int32(1)
             qx = @inbounds dv.coords_t[1, j]
@@ -347,7 +347,7 @@ function _fill_edges_kernel_2d!(senders, receivers, rdisp, rdist,
     px = @inbounds dv.coords_q[1, i]
     py = @inbounds dv.coords_q[2, i]
     inv_r_local = inv_r
-    TreeNSearch.@for_each_neighbor_device_inline_2d dv i j begin
+    Octopus.@for_each_neighbor_device_inline_2d dv i j begin
         if !exclude_self || j != i32
             cursor += Int32(1)
             qx = @inbounds dv.coords_t[1, j]
@@ -449,7 +449,7 @@ end
 # `Octree{T,NDIMS}` constructor takes an `AbstractArray` to pick backend; we
 # need it to work when the user hands us a CuArray.
 
-function TreeNSearch.Octree{T,NDIMS}(backend_like::CuArray) where {T,NDIMS}
+function Octopus.Octree{T,NDIMS}(backend_like::CuArray) where {T,NDIMS}
     NCH = 1 << NDIMS
     MF = CUDA.zeros(T, NDIMS, 0)
     MI = CUDA.zeros(Int32, NCH, 0)

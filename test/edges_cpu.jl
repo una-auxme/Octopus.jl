@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # Brute-force reference for the full (senders, receivers, rel_displacement,

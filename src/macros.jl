@@ -24,7 +24,7 @@
 #       i > N && return nothing
 #       i32 = Int32(i)
 #       cursor = ...
-#       TreeNSearch.@for_each_neighbor_device_inline dv i j begin
+#       Octopus.@for_each_neighbor_device_inline dv i j begin
 #           if j != i32
 #               # use j (Int32), do per-edge work; cursor is a register here
 #               cursor += Int32(1)

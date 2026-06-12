@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # Hand-permutation reference: gather along the last axis using `perm`.

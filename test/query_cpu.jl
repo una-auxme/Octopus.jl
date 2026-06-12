@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # brute_force_neighbors is defined in test/build.jl, included by runtests.jl

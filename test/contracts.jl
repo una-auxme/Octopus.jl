@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # Public-API contracts: idempotency, dirty propagation, buffer lifecycle,
@@ -20,7 +20,7 @@ using Random
                 :device_view,
                 Symbol("@for_each_neighbor_device_inline"),
                 Symbol("@for_each_neighbor_device_inline_2d"))
-        @test isdefined(TreeNSearch, sym)
+        @test isdefined(Octopus, sym)
     end
 end
 

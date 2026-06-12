@@ -7,7 +7,7 @@
 #   - `adapt(CUDABackend(), nhs)` to move cell list to GPU.
 #   - `foreach_point_neighbor` runs kernels on GPU, callback mutates GPU arrays.
 #
-# TreeNSearch GPU path:
+# Octopus GPU path:
 #   - CuArray coords → `add_point_set!` infers :cuda backend.
 #   - `run!(tns)` builds on CPU from a transient copy and uploads tree (v0.1
 #     strategy documented in the plan; native GPU build is v0.2).
@@ -16,7 +16,7 @@
 # Run:
 #   julia --project=benchmarks --threads=auto benchmarks/vs_graphnetsim_gpu.jl
 
-using TreeNSearch
+using Octopus
 using PointNeighbors
 using CUDA
 using Adapt
@@ -85,7 +85,7 @@ function pn_point_neighbor_ns_gpu(pos::CuArray, radius::Float32)
 end
 
 # ------------------------------------------------------------------------
-# TreeNSearch GPU path — same output shape, same self-edge semantics.
+# Octopus GPU path — same output shape, same self-edge semantics.
 # ------------------------------------------------------------------------
 
 # Pass A: count (including self). The closure mutation of a scalar local
@@ -197,7 +197,7 @@ function tns_point_neighbor_ns_gpu(pos_orig::CuArray{Float32}, radius::Float32)
     D = size(pos_orig, 1)
     N = size(pos_orig, 2)
 
-    # TreeNSearch v0.1 is 3D-only. For D=2 we pad to 3D (z=0) for the tree;
+    # Octopus v0.1 is 3D-only. For D=2 we pad to 3D (z=0) for the tree;
     # rel_displacement and rel_dist_norm are still computed in D dimensions.
     pos3 = if D == 3
         pos_orig
@@ -281,7 +281,7 @@ wrap_sync(f) = () -> (f(); CUDA.synchronize(); nothing)
 function gpu_alloc_bytes(nhs)
     # Count only device-resident arrays — summarysize on adapted CPU+GPU
     # structs double-counts host-side wrappers. For PN we walk the adapted
-    # struct; for TreeNSearch we walk the trees + perm + morton + stacks.
+    # struct; for Octopus we walk the trees + perm + morton + stacks.
     return Base.summarysize(nhs)
 end
 
@@ -321,7 +321,7 @@ end
 
 function run_benchmark()
     println("\nGraphNetSim GPU neighborhood-search benchmark")
-    println("TreeNSearch.jl vs PointNeighbors.jl (matches `point_neighbor_ns(::CuArray)`)")
+    println("Octopus.jl vs PointNeighbors.jl (matches `point_neighbor_ns(::CuArray)`)")
     println("Julia: ", VERSION, "  threads: ", Threads.nthreads())
     println("GPU:   ", name(CUDA.device()))
     println()
@@ -383,7 +383,7 @@ function run_benchmark()
         @printf("%-16s %15s   device overhead: %s\n",
                 "PointNeighbors", fmt_time(median(b_pn.times)), fmt_bytes(pn_dev_bytes))
         @printf("%-16s %15s   device overhead: %s\n",
-                "TreeNSearch",    fmt_time(median(b_tns.times)), fmt_bytes(tns_dev_bytes))
+                "Octopus",    fmt_time(median(b_tns.times)), fmt_bytes(tns_dev_bytes))
 
         spd = median(b_pn.times) / median(b_tns.times)
         memx = pn_dev_bytes / max(tns_dev_bytes, 1)

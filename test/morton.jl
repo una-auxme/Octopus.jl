@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch: morton_encode3, morton_decode3, morton_encode2, morton_decode2, bin_point
+using Octopus: morton_encode3, morton_decode3, morton_encode2, morton_decode2, bin_point
 
 @testset "encode/decode round-trip" begin
     for (x, y, z) in [(0, 0, 0), (1, 2, 3), (7, 11, 19), (0x1fffff, 0x1fffff, 0x1fffff),

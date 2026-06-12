@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # 2D brute-force neighbor reference, mirroring the 3D one in test/build.jl.
@@ -101,5 +101,5 @@ end
     set_active_search!(tns, id, id)
     run!(tns)
     @test tns.trees[id].n_nodes == Int32(1)
-    @test TreeNSearch.get_neighborlist(tns, id, id, 1) == Int32[]
+    @test Octopus.get_neighborlist(tns, id, id, 1) == Int32[]
 end

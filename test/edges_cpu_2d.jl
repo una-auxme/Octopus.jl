@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # Brute-force edges for 2D. Convention matches 3D edges:

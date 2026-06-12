@@ -16,7 +16,7 @@
 #
 # Run: julia --project=benchmarks --threads=auto benchmarks/spike_write_kernel.jl
 
-using TreeNSearch
+using Octopus
 using CUDA
 using StaticArrays
 using Random
@@ -24,8 +24,8 @@ using Printf
 using Statistics
 
 CUDA.functional() || error("CUDA required")
-const _CUDA_EXT = Base.get_extension(TreeNSearch, :TreeNSearchCUDAExt)
-@assert _CUDA_EXT !== nothing "TreeNSearchCUDAExt not loaded"
+const _CUDA_EXT = Base.get_extension(Octopus, :OctopusCUDAExt)
+@assert _CUDA_EXT !== nothing "OctopusCUDAExt not loaded"
 
 # ------------------------------------------------------------------------
 # V0 baseline — same code as vs_graphnetsim_gpu.jl::write_kernel_3d!

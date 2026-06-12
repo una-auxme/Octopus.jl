@@ -1,10 +1,10 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # Backend-mismatch error contracts that can be checked without CUDA loaded.
 # The mirror image (host calls on a :cuda TNS) lives in the CUDA test files
-# under JULIA_TREENSEARCH_TEST_CUDA=1.
+# under JULIA_OCTOPUS_TEST_CUDA=1.
 
 @testset "device_view on a CPU TNS errors" begin
     Random.seed!(5001)

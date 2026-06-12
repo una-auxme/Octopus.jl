@@ -1,6 +1,6 @@
-module TreeNSearchChainRulesCoreExt
+module OctopusChainRulesCoreExt
 
-# Weak-extension: Zygote / ChainRules compatibility for TreeNSearch.
+# Weak-extension: Zygote / ChainRules compatibility for Octopus.
 #
 # The package's core API is buffer-mutating, which Zygote rejects. We patch
 # that by:
@@ -12,11 +12,11 @@ module TreeNSearchChainRulesCoreExt
 #      GraphNetSim.jl/src/graph.jl:432.
 #
 # This file handles the CPU (Array) path. The matching GPU path lives in
-# TreeNSearchCUDAChainRulesCoreExt (loaded when CUDA + ChainRulesCore are
+# OctopusCUDAChainRulesCoreExt (loaded when CUDA + ChainRulesCore are
 # both present), which uses `CUDA.atomic_add!` for the per-edge accumulation.
 
-using TreeNSearch
-import TreeNSearch: TNS, build_edges
+using Octopus
+import Octopus: TNS, build_edges
 import ChainRulesCore
 using ChainRulesCore: NoTangent, ZeroTangent, AbstractZero, Tangent, @non_differentiable
 
@@ -24,17 +24,17 @@ using ChainRulesCore: NoTangent, ZeroTangent, AbstractZero, Tangent, @non_differ
 # These mutate `tns` and have no meaningful gradient. Declaring them keeps
 # users from having to wrap each one in `Zygote.@ignore`.
 
-@non_differentiable TreeNSearch.run!(::Any)
-@non_differentiable TreeNSearch.set_search_radius!(::Any, ::Any)
-@non_differentiable TreeNSearch.set_refit_mode!(::Any, ::Any)
-@non_differentiable TreeNSearch.add_point_set!(::Any, ::Any)
-@non_differentiable TreeNSearch.resize_point_set!(::Any, ::Any, ::Any)
-@non_differentiable TreeNSearch.update_point_set!(::Any, ::Any, ::Any)
-@non_differentiable TreeNSearch.set_active_search!(::Any, ::Any, ::Any)
-@non_differentiable TreeNSearch.prepare_zsort!(::Any)
-@non_differentiable TreeNSearch.get_neighborlist(::Any, ::Any, ::Any, ::Any)
-@non_differentiable TreeNSearch.materialize_all_neighbors!(::Any)
-@non_differentiable TreeNSearch.device_view(::Any, ::Any, ::Any)
+@non_differentiable Octopus.run!(::Any)
+@non_differentiable Octopus.set_search_radius!(::Any, ::Any)
+@non_differentiable Octopus.set_refit_mode!(::Any, ::Any)
+@non_differentiable Octopus.add_point_set!(::Any, ::Any)
+@non_differentiable Octopus.resize_point_set!(::Any, ::Any, ::Any)
+@non_differentiable Octopus.update_point_set!(::Any, ::Any, ::Any)
+@non_differentiable Octopus.set_active_search!(::Any, ::Any, ::Any)
+@non_differentiable Octopus.prepare_zsort!(::Any)
+@non_differentiable Octopus.get_neighborlist(::Any, ::Any, ::Any, ::Any)
+@non_differentiable Octopus.materialize_all_neighbors!(::Any)
+@non_differentiable Octopus.device_view(::Any, ::Any, ::Any)
 
 # ---------------- build_edges_diff: CPU primal -----------------------------
 
@@ -43,7 +43,7 @@ using ChainRulesCore: NoTangent, ZeroTangent, AbstractZero, Tangent, @non_differ
 # otherwise be overwritten by a subsequent `build_edges(!)` / `build_edges_diff`
 # call before the pullback runs.
 
-function TreeNSearch.build_edges_diff(coords::AbstractMatrix{T},
+function Octopus.build_edges_diff(coords::AbstractMatrix{T},
                                       tns::TNS,
                                       id::Integer,
                                       radius::Real) where {T<:AbstractFloat}
@@ -77,12 +77,12 @@ end
 # Self-pair only (qid == tid == id). Cross-pair could be added by accepting
 # (coords_q, coords_t) and writing two grads; that's not part of v0.1.
 
-function ChainRulesCore.rrule(::typeof(TreeNSearch.build_edges_diff),
+function ChainRulesCore.rrule(::typeof(Octopus.build_edges_diff),
                               coords::AbstractMatrix{T},
                               tns::TNS,
                               id::Integer,
                               radius::Real) where {T<:AbstractFloat}
-    e = TreeNSearch.build_edges_diff(coords, tns, id, radius)
+    e = Octopus.build_edges_diff(coords, tns, id, radius)
     senders          = e.senders
     receivers        = e.receivers
     rel_displacement = e.rel_displacement

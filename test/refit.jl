@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # Refit mode: when on, the morton_codes scratch is retained between run!

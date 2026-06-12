@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 using CUDA
 
@@ -34,7 +34,7 @@ else
             i > N && return nothing
             i32 = Int32(i)
             c = Int32(0)
-            TreeNSearch.@for_each_neighbor_device_inline_2d dv i j begin
+            Octopus.@for_each_neighbor_device_inline_2d dv i j begin
                 if j != i32
                     c += Int32(1)
                 end
@@ -82,7 +82,7 @@ else
             i > N && return nothing
             i32 = Int32(i)
             k = Int32(0)
-            TreeNSearch.@for_each_neighbor_device_inline_2d dv i j begin
+            Octopus.@for_each_neighbor_device_inline_2d dv i j begin
                 if j != i32 && k < Int32(maxn)
                     k += Int32(1)
                     @inbounds lists[k, i] = j

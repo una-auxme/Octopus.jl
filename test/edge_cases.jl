@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # Edge cases and boundary behaviors. These are the cases that bite first in

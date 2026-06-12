@@ -1,12 +1,12 @@
-module TreeNSearchCUDAChainRulesCoreExt
+module OctopusCUDAChainRulesCoreExt
 
 # Weak extension: GPU rrule for build_edges_diff. Loads when both CUDA.jl
 # and ChainRulesCore.jl are present. The CPU rrule lives in
-# TreeNSearchChainRulesCoreExt; this file adds the matching GPU dispatch
+# OctopusChainRulesCoreExt; this file adds the matching GPU dispatch
 # (atomic-add kernel mirroring GraphNetSim.jl/src/graph.jl:513).
 
-using TreeNSearch
-import TreeNSearch: TNS, build_edges
+using Octopus
+import Octopus: TNS, build_edges
 using CUDA
 import ChainRulesCore
 using ChainRulesCore: NoTangent, AbstractZero
@@ -15,7 +15,7 @@ using ChainRulesCore: NoTangent, AbstractZero
 # Snapshots the four output arrays so the pullback closes over stable values
 # (the EdgeBuffer is reused across calls).
 
-function TreeNSearch.build_edges_diff(coords::CUDA.CuMatrix{T},
+function Octopus.build_edges_diff(coords::CUDA.CuMatrix{T},
                                       tns::TNS,
                                       id::Integer,
                                       radius::Real) where {T<:AbstractFloat}
@@ -106,12 +106,12 @@ end
 
 # ---------------- build_edges_diff: GPU rrule ------------------------------
 
-function ChainRulesCore.rrule(::typeof(TreeNSearch.build_edges_diff),
+function ChainRulesCore.rrule(::typeof(Octopus.build_edges_diff),
                               coords::CUDA.CuMatrix{T},
                               tns::TNS,
                               id::Integer,
                               radius::Real) where {T<:AbstractFloat}
-    e = TreeNSearch.build_edges_diff(coords, tns, id, radius)
+    e = Octopus.build_edges_diff(coords, tns, id, radius)
     senders          = e.senders
     receivers        = e.receivers
     rel_displacement = e.rel_displacement

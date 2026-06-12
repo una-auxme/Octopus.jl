@@ -1,5 +1,5 @@
 #!/usr/bin/env julia
-# Head-to-head comparison: TreeNSearch.jl vs PointNeighbors.jl.
+# Head-to-head comparison: Octopus.jl vs PointNeighbors.jl.
 #
 # For each configuration (N, radius, distribution) we measure:
 #   - Correctness: total neighbor count agrees with the brute-force reference.
@@ -11,7 +11,7 @@
 #
 # Run:  julia --project=benchmarks --threads=auto benchmarks/vs_pointneighbors.jl
 
-using TreeNSearch
+using Octopus
 using PointNeighbors
 using BenchmarkTools
 using Random
@@ -47,7 +47,7 @@ function brute_total(coords::AbstractMatrix{T}, r::T) where {T}
     return total
 end
 
-# Total neighbor count via TreeNSearch (self-search; excludes self).
+# Total neighbor count via Octopus (self-search; excludes self).
 function tns_total(coords::AbstractMatrix{T}, r::T) where {T}
     tns = TNS(T)
     set_search_radius!(tns, r)
@@ -230,7 +230,7 @@ end
 fmt_bpp(b, n) = @sprintf("%8.2f B/pt (%6.2f MB total)", b/n, b/2^20)
 
 function run_all()
-    println("\nTreeNSearch.jl vs PointNeighbors.jl")
+    println("\nOctopus.jl vs PointNeighbors.jl")
     println("Julia: ", VERSION, "  threads: ", Threads.nthreads())
     println()
 
@@ -255,11 +255,11 @@ function run_all()
                 "backend", "build", "query", "correct?", "memory overhead")
         println("-" ^ 100)
 
-        # TreeNSearch
+        # Octopus
         b, q, mem, tot = time_tns_build_query(sc.coords, r)
         ok = bf === nothing ? "(N/A)" : (tot == bf ? "yes" : "NO ($tot vs $bf)")
         @printf("%-32s %12s %12s %12s %s\n",
-                "TreeNSearch.jl", fmt_time(median(b.times)), fmt_time(median(q.times)),
+                "Octopus.jl", fmt_time(median(b.times)), fmt_time(median(q.times)),
                 ok, fmt_bpp(mem, n))
 
         # PN Grid + DictionaryCellList (default)

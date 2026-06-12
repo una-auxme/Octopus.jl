@@ -1,10 +1,10 @@
 # GPU usage
 
-TreeNSearch.jl runs on NVIDIA GPUs via the `TreeNSearchCUDAExt` extension that
+Octopus.jl runs on NVIDIA GPUs via the `OctopusCUDAExt` extension that
 loads when `using CUDA` is in scope.
 
 ```julia
-using TreeNSearch
+using Octopus
 using CUDA
 
 xyz = CUDA.rand(Float32, 3, 100_000)
@@ -50,7 +50,7 @@ per-thread edge cursor:
 
 End-to-end build + count + alloc + write (lower is better):
 
-| Scene | TreeNSearch (macro) | PointNeighbors.jl | Speedup |
+| Scene | Octopus (macro) | PointNeighbors.jl | Speedup |
 |---|---:|---:|---:|
 | 2D dam-break N=1k  | 1.55 ms | 14.6 ms | 9.4× |
 | 2D dam-break N=5k  | 9.3 ms  | 28.4 ms | 3.1× |
@@ -149,8 +149,8 @@ CUDA.synchronize()
   `@for_each_neighbor_device_inline_2d` macro for write-pass kernels.
   Coords are `(NDIMS, N)` matrices on either device — no padding.
 - The macro requires `StaticArrays` to be loadable; that dependency is
-  already in TreeNSearch's `Project.toml`, so calling code only needs
-  `using TreeNSearch, CUDA` (and optionally `using StaticArrays` if you also
+  already in Octopus's `Project.toml`, so calling code only needs
+  `using Octopus, CUDA` (and optionally `using StaticArrays` if you also
   use `MVector` directly in your own code).
 - Stack depth is fixed at 40. If your tree is deeper (e.g. very-extreme leaf
   size ratios), increase the constant in [src/macros.jl](../../src/macros.jl)
@@ -168,7 +168,7 @@ For a write-pass kernel modelled after `point_neighbor_ns`:
    `dx * inv_r` in the body. On Float32 the compiler folds 4–6 divisions per
    edge into multiplies.
 3. **Match `coords` shape to the body's actual dimensions**: when 2D-padded
-   coords are passed to TreeNSearch, your kernel can still compute features
+   coords are passed to Octopus, your kernel can still compute features
    in the original 2D space (the macro filters by 3D distance, which equals
    2D distance when z = 0).
 4. **One thread per query point**: the simplest, most predictable mapping.

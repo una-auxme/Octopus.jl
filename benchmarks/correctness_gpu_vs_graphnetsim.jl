@@ -1,5 +1,5 @@
 #!/usr/bin/env julia
-# GPU correctness + perf check: TreeNSearch vs GraphNetSim's
+# GPU correctness + perf check: Octopus vs GraphNetSim's
 # `point_neighbor_ns(::CuArray, ...)` (the only TNS-relevant moving part inside
 # `build_graph`).
 #
@@ -7,7 +7,7 @@
 # GraphNetSim.jl/src/graph.jl:319-360, with the same FullGridCellList capacity
 # bump used in the CPU check (default 100 overflows on uniform clouds).
 #
-# Calls TreeNSearch's *public* CUDA `build_edges` directly. The CUDA edge
+# Calls Octopus's *public* CUDA `build_edges` directly. The CUDA edge
 # kernels were patched to use the inline-traversal macros (no closure-captured
 # locals); `build_edges` is now the production entry point a port of
 # `build_graph` would call.
@@ -15,7 +15,7 @@
 # Run:
 #   julia --project=benchmarks --threads=auto benchmarks/correctness_gpu_vs_graphnetsim.jl
 
-using TreeNSearch
+using Octopus
 using PointNeighbors
 using CUDA
 using Adapt
@@ -79,7 +79,7 @@ function pn_point_neighbor_ns_gpu(pos::CuArray{Float32}, radius::Float32)
 end
 
 # -----------------------------------------------------------------------------
-# TreeNSearch: native CUDA `build_edges`. This is the production path that a
+# Octopus: native CUDA `build_edges`. This is the production path that a
 # port of `build_graph` would call. Excludes the self-edge for symmetric
 # search; PN's reference includes it, so we strip self from PN before joining.
 # -----------------------------------------------------------------------------
@@ -258,7 +258,7 @@ end
 # -----------------------------------------------------------------------------
 
 function run_all()
-    println("\nGPU correctness + perf: TreeNSearch vs GraphNetSim.point_neighbor_ns(::CuArray)")
+    println("\nGPU correctness + perf: Octopus vs GraphNetSim.point_neighbor_ns(::CuArray)")
     println("Julia ", VERSION, "  threads=", Threads.nthreads())
     println()
 
@@ -276,7 +276,7 @@ function run_all()
 
         @printf("  PointNeighbors  median: %s   device overhead: %s\n",
                 fmt_time(median(b_pn.times)), fmt_bytes(pn_b))
-        @printf("  TreeNSearch     median: %s   device overhead: %s\n",
+        @printf("  Octopus     median: %s   device overhead: %s\n",
                 fmt_time(median(b_tn.times)), fmt_bytes(tns_b))
         spd = median(b_pn.times) / median(b_tn.times)
         memx = pn_b / max(tns_b, 1)

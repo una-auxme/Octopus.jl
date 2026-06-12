@@ -1,17 +1,17 @@
 #!/usr/bin/env julia
-# Phase 0 of the v0.2 plan: profile each phase of both TreeNSearch and
+# Phase 0 of the v0.2 plan: profile each phase of both Octopus and
 # PointNeighbors on the GraphNetSim `point_neighbor_ns` GPU pipeline, so we
 # can answer "is tree shape really the 2D bottleneck?".
 #
 # Phases instrumented per call (synchronized after each):
-#   TreeNSearch GPU:       pad2to3 / construct / run! / count_kernel /
+#   Octopus GPU:       pad2to3 / construct / run! / count_kernel /
 #                          cumsum / alloc_output / write_kernel
 #   PointNeighbors GPU:    setup / construct / initialize / adapt /
 #                          count_pass / cumsum / alloc_output / write_pass
 #
 # Run:  julia --project=benchmarks --threads=auto benchmarks/profile_phases.jl
 
-using TreeNSearch
+using Octopus
 using PointNeighbors
 using CUDA
 using Adapt
@@ -42,7 +42,7 @@ function bench_segment(f, ntimes::Int = 5)
 end
 
 # ------------------------------------------------------------------------
-# Phase-by-phase TreeNSearch
+# Phase-by-phase Octopus
 # ------------------------------------------------------------------------
 
 function profile_tns(pos_orig::CuArray{Float32}, radius::Float32)
@@ -336,7 +336,7 @@ ms(t) = @sprintf("%7.2f", t * 1e3)
 
 function report_tns(p)
     total = p.run_phase + p.count_phase + p.cumsum_phase + p.alloc_phase + p.write_phase + p.pad2to3
-    println("  TreeNSearch phases (ms):")
+    println("  Octopus phases (ms):")
     @printf("    pad 2D->3D       : %s\n", ms(p.pad2to3))
     @printf("    run! (build+up)  : %s   <- bin/sort/build/refit/upload\n", ms(p.run_phase))
     @printf("    count_kernel     : %s\n", ms(p.count_phase))
@@ -390,7 +390,7 @@ function build_scenarios()
 end
 
 function main()
-    println("Phase profile — TreeNSearch.jl vs PointNeighbors.jl GPU paths")
+    println("Phase profile — Octopus.jl vs PointNeighbors.jl GPU paths")
     println("Julia: ", VERSION, "  threads: ", Threads.nthreads())
     println("GPU:   ", name(CUDA.device()))
     println()

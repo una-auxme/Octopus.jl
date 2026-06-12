@@ -1,5 +1,5 @@
 #!/usr/bin/env julia
-# Correctness check: TreeNSearch.jl vs GraphNetSim.jl's `build_graph` neighbor
+# Correctness check: Octopus.jl vs GraphNetSim.jl's `build_graph` neighbor
 # search core (`point_neighbor_ns`, which is the only TNS-relevant moving part
 # inside build_graph — the rest is feature normalization).
 #
@@ -11,7 +11,7 @@
 #   rel_disp   = pos_diff / radius
 #   rel_dist   = ‖pos_diff‖ / radius
 #
-# We compare against TreeNSearch.build_edges, which produces the same fields
+# We compare against Octopus.build_edges, which produces the same fields
 # with the same sign convention but excludes the self pair (j == i). To get
 # bitwise-comparable outputs, we strip the self pair from the PN reference
 # before joining on (sender, receiver) and comparing rel_disp / rel_dist.
@@ -19,7 +19,7 @@
 # Run:
 #   julia --project=benchmarks --threads=auto benchmarks/correctness_vs_graphnetsim.jl
 
-using TreeNSearch
+using Octopus
 using PointNeighbors
 using Random
 using Printf
@@ -78,7 +78,7 @@ function pn_point_neighbor_ns(pos::Matrix{Float32}, radius::Float32)
 end
 
 # -----------------------------------------------------------------------------
-# TreeNSearch run, built on the package's `build_edges` (the *production* API
+# Octopus run, built on the package's `build_edges` (the *production* API
 # that `build_graph` would replace `point_neighbor_ns` with).
 # -----------------------------------------------------------------------------
 
@@ -188,7 +188,7 @@ end
 # -----------------------------------------------------------------------------
 
 function main()
-    println("Correctness: TreeNSearch.build_edges vs GraphNetSim.point_neighbor_ns")
+    println("Correctness: Octopus.build_edges vs GraphNetSim.point_neighbor_ns")
     println("Julia ", VERSION, "  threads=", Threads.nthreads())
 
     # --- 2D dam-break-like ---

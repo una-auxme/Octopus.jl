@@ -1,5 +1,5 @@
 using Test
-using TreeNSearch
+using Octopus
 using Random
 
 # Hard ceilings from the plan. Steady-state on-CPU: ≤ 12 B/pt of overhead
@@ -74,7 +74,7 @@ end
     @test n_alloc <= 32  # one dispatch box; no scaling with tree depth
 
     # The hot path itself is allocation-free.
-    import TreeNSearch: _for_each_neighbor_barrier
+    import Octopus: _for_each_neighbor_barrier
     ps = tns.point_sets[id]; tree = tns.trees[id]; perm = tns.permutation[id]
     _for_each_neighbor_barrier(cb, ps, ps, tree, perm, tns.query_stacks[1], tns.radius, 1)
     n_alloc_inner = @allocated _for_each_neighbor_barrier(
