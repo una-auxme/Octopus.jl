@@ -1,7 +1,7 @@
 name = "Octopus"
 uuid = "49bb3e92-56cb-4d34-aed6-8ee8ef58b458"
-authors = ["Octopus.jl contributors"]
 version = "0.1.0"
+authors = ["Octopus.jl contributors"]
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -16,14 +16,14 @@ CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 
 [extensions]
+OctopusCUDAChainRulesCoreExt = ["CUDA", "ChainRulesCore"]
 OctopusCUDAExt = "CUDA"
 OctopusChainRulesCoreExt = "ChainRulesCore"
-OctopusCUDAChainRulesCoreExt = ["CUDA", "ChainRulesCore"]
 
 [compat]
 Adapt = "4"
 Atomix = "0.1, 1"
-CUDA = "5"
+CUDA = "5, 6"
 ChainRulesCore = "1"
 GPUArraysCore = "0.1, 0.2"
 Polyester = "0.7"
