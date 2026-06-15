@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.11'   # declared minimum
+          - '1.12'   # declared minimum
           - '1'      # latest stable 1.x
         os:
           - ubuntu-latest
