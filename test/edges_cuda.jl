@@ -103,4 +103,39 @@ else
         @test size(e.rel_displacement) == (3, n_edges)
         @test size(e.rel_dist_norm)    == (1, n_edges)
     end
+
+    @testset "build_edges GPU sender/receiver row alignment" begin
+        # Regression: row k of every output array must describe the SAME edge.
+        # senders[k]/receivers[k] are one (target,query) pair, and
+        # rel_displacement[:,k] / rel_dist_norm[k] are that pair's geometry.
+        # Nothing in the GPU path may sort one array without co-permuting the
+        # rest. Verified element-wise against the raw coords.
+        Random.seed!(202)
+        N = 800
+        r = 0.1f0
+        coords = rand(Float32, 3, N)
+        tns = TNS(Float32); set_search_radius!(tns, r)
+        gid = add_point_set!(tns, CuArray(coords))
+        set_active_search!(tns, gid, gid); run!(tns)
+        e = build_edges(tns, gid, gid)
+
+        s = Array(e.senders); rcv = Array(e.receivers)
+        disp = Array(e.rel_displacement); dist = Array(e.rel_dist_norm)
+        @test length(s) == length(rcv)
+
+        ok_pair = true; ok_geom = true; ok_self = true
+        for k in 1:length(s)
+            i = Int(rcv[k]); j = Int(s[k])     # receiver=query i, sender=target j
+            (1 <= i <= N && 1 <= j <= N) || (ok_pair = false; continue)
+            i == j && (ok_self = false)         # self-pair must be excluded
+            d = coords[:, i] .- coords[:, j]    # query − target (sign convention)
+            nd = sqrt(sum(abs2, d))
+            nd <= r * (1 + 1f-4) || (ok_pair = false)
+            all(abs.(disp[:, k] .- d ./ r) .< 1f-4) || (ok_geom = false)
+            abs(dist[1, k] - nd / r) < 1f-4 || (ok_geom = false)
+        end
+        @test ok_pair    # every (sender,receiver) is a real in-radius neighbor
+        @test ok_self    # no self-loops on a self-pair search
+        @test ok_geom    # displacement/distance row k matches that exact pair
+    end
 end

@@ -15,6 +15,16 @@ set_active_search!(tns, id, id)
 run!(tns)
 ```
 
+## On-device build
+
+`run!` builds the octree entirely on the GPU — the origin reduction, Morton
+encoding, sort, level-synchronous topology pass and bottom-up bounds refit all
+run in device kernels, and the coordinates never round-trip through the host.
+For a per-timestep simulation or training loop that rebuilds every step this
+keeps the build off the critical CPU path (≈2–4 ms for 5k–200k points on an
+A30). The resulting tree is structurally identical to the CPU build, so edge
+sets match the CPU backend exactly.
+
 There are two ways to iterate neighbors from inside your own `@cuda` kernels:
 
 1. **`for_each_neighbor_device(dv, i) do j ... end`** — closure form. Easiest

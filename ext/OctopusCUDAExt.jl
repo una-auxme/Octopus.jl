@@ -5,10 +5,7 @@ using CUDA
 using StaticArrays
 import Octopus: _run_cuda!, _device_view, for_each_neighbor_device,
                     _build_edges_cuda!, _apply_zsort_cuda,
-                    TNS, PointSet, Octree, NeighborBuffer, EdgeBuffer,
-                    bin_cpu!, sort_by_key_cpu!,
-                    build_cpu!, refit_bounds_cpu!, _point_origin,
-                    ensure_capacity!
+                    TNS, PointSet, Octree, NeighborBuffer, EdgeBuffer
 
 function __init__()
     Octopus._CUDA_EXT_LOADED[] = true
@@ -198,9 +195,12 @@ end
 end
 
 # ---------------- build orchestration --------------------------------------
-# v0.1 strategy (documented in the plan): GPU-resident coords, CPU-hosted
-# build via a temporary copy, then copy tree back to GPU. The heavy cost
-# (per-query traversal) stays on GPU via for_each_neighbor_device.
+# v0.2 strategy: the whole build runs on the device — origin reduction, Morton
+# binning, sort, level-synchronous topology and bottom-up refit — so the GPU
+# path no longer round-trips coords through the host. Kernels live in
+# cuda_build.jl; `_build_gpu_tree!` is the orchestrator.
+
+include("cuda_build.jl")
 
 function _run_cuda!(tns::TNS{T,NDIMS}) where {T,NDIMS}
     @inbounds for sid in eachindex(tns.point_sets)
@@ -209,10 +209,11 @@ function _run_cuda!(tns::TNS{T,NDIMS}) where {T,NDIMS}
         coords_gpu = ps.coords
         n = Int(ps.n)
 
+        gpu_tree = tns.trees[sid]
+
         # Empty point set: leave the tree empty so device-side traversal
-        # short-circuits. Avoids _point_origin reading coords[1, 1] on n=0.
+        # short-circuits (n_nodes==0).
         if n == 0
-            gpu_tree = tns.trees[sid]
             gpu_tree.n_nodes = Int32(0)
             tns.permutation[sid] = CuArray(Int32[])
             tns.morton_codes[sid] = CuArray(UInt64[])
@@ -220,40 +221,12 @@ function _run_cuda!(tns::TNS{T,NDIMS}) where {T,NDIMS}
             continue
         end
 
-        # Transient CPU copy — O(N) transfer, amortized over many queries.
-        coords_cpu = Array(coords_gpu)
+        perm, morton, origin = _build_gpu_tree!(
+            gpu_tree, coords_gpu, n, tns.cell_size, tns.target_leaf_size, tns.refit_mode)
 
-        origin = _point_origin(coords_cpu)
+        tns.permutation[sid] = perm
         tns.origin[sid] = origin
-
-        morton_cpu = UInt64[]
-        ensure_capacity!(morton_cpu, n); resize!(morton_cpu, n)
-        bin_cpu!(morton_cpu, coords_cpu, origin, tns.cell_size)
-
-        perm_cpu = Vector{Int32}(undef, n)
-        sort_by_key_cpu!(perm_cpu, morton_cpu)
-
-        # Build on CPU using a CPU scratch Octree, then copy arrays to GPU.
-        cpu_tree = Octree{T,NDIMS}(coords_cpu)
-        build_cpu!(cpu_tree, morton_cpu, perm_cpu, tns.target_leaf_size)
-        refit_bounds_cpu!(cpu_tree, coords_cpu, perm_cpu)
-
-        # Upload tree to GPU.
-        gpu_tree = tns.trees[sid]
-        gpu_tree.node_bounds_min = CuArray(cpu_tree.node_bounds_min)
-        gpu_tree.node_bounds_max = CuArray(cpu_tree.node_bounds_max)
-        gpu_tree.node_first      = CuArray(cpu_tree.node_first)
-        gpu_tree.node_last       = CuArray(cpu_tree.node_last)
-        gpu_tree.node_children   = CuArray(cpu_tree.node_children)
-        gpu_tree.n_nodes         = cpu_tree.n_nodes
-
-        tns.permutation[sid] = CuArray(perm_cpu)
-        if tns.refit_mode
-            tns.morton_codes[sid] = CuArray(morton_cpu)
-        else
-            tns.morton_codes[sid] = CuArray(UInt64[])
-        end
-
+        tns.morton_codes[sid] = tns.refit_mode ? morton : CuArray(UInt64[])
         tns.dirty[sid] = false
     end
 

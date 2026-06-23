@@ -45,6 +45,57 @@ for_each_neighbor(tns, id, id, 1) do j
 end
 ```
 
+## GPU usage (CUDA)
+
+The GPU path lives in a weak extension that loads automatically when `CUDA` is
+imported. Pass `CuArray` coordinates and the same API runs on the device — the
+build is hosted on the CPU in v0.1, while all per-query traversal stays on the
+GPU. NVIDIA only.
+
+```julia
+using Octopus, CUDA            # importing CUDA activates the GPU extension
+
+xyz = CuArray(rand(Float32, 3, 100_000))   # coords on the device
+tns = TNS(Float32; ndims=3)
+set_search_radius!(tns, 0.02f0)
+id  = add_point_set!(tns, xyz)              # CuArray coords ⇒ :cuda backend
+set_active_search!(tns, id, id)
+run!(tns)
+
+# High-level: flat-COO edge buffers, all CuArrays, ready to drop into a GNN.
+e = build_edges(tns, id, id)
+# e.senders, e.receivers :: CuArray{Int32}
+# e.rel_displacement     :: CuArray{Float32} (NDIMS, n_edges)   (self-pair excludes j == i)
+# e.rel_dist_norm        :: CuArray{Float32} (1, n_edges)
+```
+
+For zero-allocation neighbor iteration inside your own `@cuda` kernel, grab a
+`device_view` (an isbits handle holding the device arrays) and call
+`for_each_neighbor_device` per query point. Note the callback writes into an
+array slot rather than a mutable local — a captured scalar would be boxed and
+rejected by the GPU compiler:
+
+```julia
+dv = device_view(tns, id, id)
+
+function count_neighbors!(counts, dv)
+    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    i > length(counts) && return
+    for_each_neighbor_device(dv, i) do _    # callback arg is the neighbor index j
+        @inbounds counts[i] += Int32(1)     # write the slot, not a boxed local
+    end
+    return
+end
+
+counts = CUDA.zeros(Int32, size(xyz, 2))
+threads = 128
+@cuda threads=threads blocks=cld(length(counts), threads) count_neighbors!(counts, dv)
+```
+
+For the hot path, `@for_each_neighbor_device_inline dv i j begin … end` (and the
+`_2d` variant) inlines the traversal so the cursor stays in a register — measurably
+faster than the closure form when emitting many edges per point.
+
 ## Scope (v0.1)
 
 - 2D and 3D, fixed radius. Pass `ndims=2` to `TNS` for a quadtree; the
