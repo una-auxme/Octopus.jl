@@ -109,6 +109,11 @@ function _build_level_kernel!(nf, nl, nchild, morton, perm, counter,
     @inbounds cur_end   = lev_end[L + Int32(1)]
     g = cur_start + p - Int32(1)
     g > cur_end && return nothing
+    # A prior level may have overshot capacity (the atomic counter is bumped
+    # before the overflow check and never rolled back), so cur_end can exceed
+    # `capacity`. Reject ghost node ids before any nf/nl read or nchild write
+    # to keep the (about-to-be-discarded) overflow attempt memory-safe.
+    g > capacity && return nothing
     NCH = Int32(1) << NDIMS
     maxlev = _gpu_maxlev(Val(NDIMS))
     @inbounds f = nf[g]

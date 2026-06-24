@@ -138,4 +138,124 @@ else
         @test ok_self    # no self-loops on a self-pair search
         @test ok_geom    # displacement/distance row k matches that exact pair
     end
+
+    @testset "GPU build node-capacity overflow is memory-safe" begin
+        # Regression for a memory-safety bug in the GPU octree topology build.
+        # `_build_level_kernel!` bumps the device node counter with an atomic
+        # add BEFORE the capacity check and never rolls it back, so an overflow
+        # attempt ends a level with counter > capacity. The next BFS round then
+        # mapped threads onto ghost node ids in (capacity, counter], doing OOB
+        # reads of node_first/node_last and OOB writes of node_children past
+        # the size-`est` arrays. The kernel now rejects `g > capacity` before
+        # any such access; the counter overshoot stays harmless (the overflow
+        # flag still trips and the host retries with a larger estimate).
+        #
+        # This config (D=2, N=40000, r=0.072, leaf=32) overshoots the attempt-1
+        # estimate `est`. We drive the real build kernels with the node arrays
+        # padded past `est` and the trailing slots set to a canary, telling the
+        # kernels capacity == est. Any clobbered canary cell is a write the
+        # real (size-est) arrays could not hold — i.e. an out-of-bounds write.
+        ext = Base.get_extension(Octopus, :OctopusCUDAExt)
+        @test ext !== nothing
+        morton_k  = ext._morton_bin_kernel!
+        init_k    = ext._init_build_kernel!
+        level_k   = ext._build_level_kernel!
+        advance_k = ext._advance_level_kernel!
+
+        function jittered_lattice(D, N, radius; seed = 1)
+            Random.seed!(seed); s = radius / 1.6f0; per = ceil(Int, N^(1 / D))
+            grids = ntuple(_ -> 0:(per - 1), D)
+            pts = Matrix{Float32}(undef, D, per^D); idx = 1
+            for c in Iterators.product(grids...)
+                for d in 1:D
+                    pts[d, idx] = (c[d] + 0.25f0 * (rand(Float32) - 0.5f0)) * s
+                end
+                idx += 1
+            end
+            return pts[:, 1:min(N, size(pts, 2))]
+        end
+
+        D = 2; NCH = 1 << D; N = 40_000; r = 0.072f0; leaf = Int32(32)
+        coords_h = jittered_lattice(D, N, r)
+        coords = CuArray(coords_h)
+        n = size(coords, 2)
+        est = max(NCH * cld(n, Int(leaf)) + 64, 64)   # attempt-1 capacity
+
+        # --- origin / morton / sort: mirrors _build_gpu_tree! attempt 1 ---
+        mins = vec(Array(minimum(coords; dims = 2)))
+        origin = ntuple(d -> mins[d] - 1f-6, D)
+        morton = CuArray{UInt64}(undef, n)
+        threads = 256; gridb = cld(n, threads)
+        CUDA.@cuda threads=threads blocks=gridb morton_k(
+            morton, coords, origin[1], origin[2], 0f0, inv(r), Int32(n), Val(D))
+        perm = Int32.(sortperm(morton))
+
+        # --- topology with a canary guard region past `est` ---
+        maxlev = 31
+        PAD = 8192
+        CANARY = Int32(1234567)                       # never a real node value
+        nf     = CUDA.fill(CANARY, est + PAD)
+        nl     = CUDA.fill(CANARY, est + PAD)
+        nchild = CUDA.fill(CANARY, NCH, est + PAD)
+        counter   = CuArray{Int32}(undef, 1)
+        lev_start = CuArray{Int32}(undef, maxlev + 2)
+        lev_end   = CuArray{Int32}(undef, maxlev + 2)
+        overflow  = CUDA.zeros(Int32, 1)
+
+        CUDA.@cuda threads=1 init_k(nf, nl, lev_start, lev_end, counter, Int32(n))
+        for L in 0:maxlev
+            CUDA.@cuda threads=threads blocks=gridb level_k(
+                nf, nl, nchild, morton, perm, counter, lev_start, lev_end,
+                Int32(est), overflow, leaf, Int32(L), Val(D))   # capacity = est
+            CUDA.@cuda threads=1 advance_k(lev_start, lev_end, counter, Int32(L))
+        end
+        CUDA.synchronize()
+
+        # The config must genuinely exercise overflow, else the guard is untested.
+        @test (CUDA.@allowscalar overflow[1]) == Int32(1)
+        @test (CUDA.@allowscalar counter[1]) > est
+
+        # No write may land in the guard region [est+1 .. est+PAD].
+        guard = (est + 1):(est + PAD)
+        @test all(==(CANARY), Array(@view nf[guard]))
+        @test all(==(CANARY), Array(@view nl[guard]))
+        @test all(==(CANARY), Array(@view nchild[:, guard]))
+
+        # End-to-end: the same config reaches the retry path through the public
+        # API and yields a correct tree. Spot-check GPU edges for a sample of
+        # query points against an O(N) brute-force ground truth.
+        tns = TNS(Float32; ndims = D); set_search_radius!(tns, r)
+        pid = add_point_set!(tns, CuArray(coords_h))
+        set_active_search!(tns, pid, pid); run!(tns)
+        @test Int(tns.trees[pid].n_nodes) > est       # retry produced the tree
+
+        e = build_edges(tns, pid, pid)
+        rcv = Array(e.receivers); snd = Array(e.senders)
+        gpu = Dict{Int,Set{Int}}()
+        for k in 1:length(rcv)
+            push!(get!(gpu, Int(rcv[k]), Set{Int}()), Int(snd[k]))
+        end
+        Random.seed!(99)
+        sample = rand(1:N, 200)
+        r2 = r * r; band = r * 1f-4
+        function neighbors_match(coords_h, gpu, sample, r2, band, r, N)
+            for i in sample
+                truth = Set{Int}()
+                xi = coords_h[1, i]; yi = coords_h[2, i]
+                for j in 1:N
+                    j == i && continue
+                    dx = coords_h[1, j] - xi; dy = coords_h[2, j] - yi
+                    dx * dx + dy * dy <= r2 && push!(truth, j)
+                end
+                g = get(gpu, i, Set{Int}())
+                for j in union(setdiff(g, truth), setdiff(truth, g))
+                    dx = coords_h[1, j] - xi; dy = coords_h[2, j] - yi
+                    # tolerate last-ULP boundary flips, like the parity test
+                    abs(sqrt(dx * dx + dy * dy) - r) < band || return false
+                end
+            end
+            return true
+        end
+        @test neighbors_match(coords_h, gpu, sample, r2, band, r, N)
+    end
 end
