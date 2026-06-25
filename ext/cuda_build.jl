@@ -105,6 +105,14 @@ function _build_level_kernel!(nf, nl, nchild, morton, perm, counter,
                               lev_start, lev_end, capacity::Int32, overflow,
                               leaf::Int32, L::Int32, ::Val{NDIMS}) where {NDIMS}
     p = (blockIdx().x - Int32(1)) * blockDim().x + threadIdx().x
+    # Once an earlier level overran `capacity`, this whole build attempt is
+    # discarded and the host retries with a larger estimate. Stop every later
+    # level immediately: a bailing parent reserves a child block in the counter
+    # but writes none of its slots, so the sub-`capacity` slots of a straddling
+    # block hold uninitialized node_first/node_last. Without this gate the next
+    # level reads that garbage [f,l] (the `g > capacity` guard below can't catch
+    # g <= capacity) and drives an out-of-range perm[] read in the octant search.
+    @inbounds (overflow[1] != Int32(0)) && return nothing
     @inbounds cur_start = lev_start[L + Int32(1)]
     @inbounds cur_end   = lev_end[L + Int32(1)]
     g = cur_start + p - Int32(1)
