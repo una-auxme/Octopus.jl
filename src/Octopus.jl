@@ -8,7 +8,6 @@ using GPUArraysCore: AbstractGPUArray
 
 include("morton.jl")
 include("types.jl")
-include("memory.jl")
 include("util.jl")
 include("sort.jl")
 

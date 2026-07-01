@@ -4,10 +4,6 @@
 #     `lcp_tiebreak`'s 63-bit assumption is preserved).
 # Magic-bits interleave in both dims.
 
-const _MORTON_MASK_3D = (
-    0x1fffff00000000,  # 21 bits, axis x staging
-)
-
 @inline function _split_by_3(x::UInt64)::UInt64
     # Take the low 21 bits of x and spread them out so each bit occupies
     # every third position in a 64-bit word. Classic magic-bits:
@@ -75,21 +71,6 @@ end
     x = _compact_by_2(code)
     y = _compact_by_2(code >> 1)
     return (UInt32(x), UInt32(y))
-end
-
-# Longest common prefix of two 63-bit Morton codes, with index tiebreak.
-# Returns -1 when either index is out of [1, n_keys]. Used by Karras.
-# Works for both 3D (63-bit) and 2D (62-bit) codes — both keep the top bit zero.
-@inline function lcp_tiebreak(keys::AbstractVector{UInt64}, i::Int32, j::Int32, n::Int32)::Int32
-    (i < Int32(1) || i > n || j < Int32(1) || j > n) && return Int32(-1)
-    ki = @inbounds keys[i]
-    kj = @inbounds keys[j]
-    if ki == kj
-        # Tiebreak by appending bits of (i XOR j) so LCP math still works for duplicates.
-        # Shift by 32 so the natural 63-bit codes are not disturbed.
-        return Int32(63 + leading_zeros(UInt32(i) ⊻ UInt32(j)))
-    end
-    return Int32(leading_zeros(ki ⊻ kj) - 1)  # -1 because we only use 63 bits; top bit is always zero
 end
 
 # Bin a 3D point to integer cell coordinates, given origin and cell_size.

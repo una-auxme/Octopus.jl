@@ -221,11 +221,10 @@ function _run_cuda!(tns::TNS{T,NDIMS}) where {T,NDIMS}
             continue
         end
 
-        perm, morton, origin = _build_gpu_tree!(
-            gpu_tree, coords_gpu, n, tns.cell_size, tns.target_leaf_size, tns.refit_mode)
+        perm, morton = _build_gpu_tree!(
+            gpu_tree, coords_gpu, n, tns.radius, tns.target_leaf_size, tns.refit_mode)
 
         tns.permutation[sid] = perm
-        tns.origin[sid] = origin
         tns.morton_codes[sid] = tns.refit_mode ? morton : CuArray(UInt64[])
         tns.dirty[sid] = false
     end

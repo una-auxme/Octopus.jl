@@ -126,36 +126,10 @@ function build_cpu!(
 
             _partition_octants!(oc_first, oc_last, morton_codes, perm, f, l, lvl, Val(NDIMS))
 
-            nonempty = 0
-            only_o = Int32(0)
-            @inbounds for o in 1:NCH
-                if oc_first[o] != Int32(-1)
-                    nonempty += 1
-                    only_o = Int32(o)
-                end
-            end
-
-            if nonempty == 1
-                # Degenerate: all particles in the same octant at this level.
-                # Emit exactly one child at the deeper level; leaves a
-                # single-slot chain on truly degenerate input, capped at
-                # max_levels.
-                needed = n_nodes + Int32(1)
-                (node_first, node_last, node_level, node_children) =
-                    _grow_node_arrays!(node_first, node_last, node_level, node_children, needed, Val(NCH))
-                cid = needed
-                @inbounds node_first[cid] = oc_first[only_o]
-                @inbounds node_last[cid]  = oc_last[only_o]
-                @inbounds node_level[cid] = lvl + Int32(1)
-                @inbounds for o in 1:NCH
-                    node_children[o, nid] = Int32(-1)
-                end
-                @inbounds node_children[only_o, nid] = cid
-                n_nodes = cid
-                continue
-            end
-
-            # Emit up to NCH children.
+            # Emit one child per non-empty octant; empty octants get the -1
+            # sentinel. Fully degenerate input (all particles in one octant)
+            # just produces a one-child chain, level by level, until the range
+            # drops to a leaf or hits max_levels.
             @inbounds for o in 1:NCH
                 if oc_first[o] == Int32(-1)
                     node_children[o, nid] = Int32(-1)

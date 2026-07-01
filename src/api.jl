@@ -9,7 +9,6 @@ using StaticArrays
 function set_search_radius!(tns::TNS{T,NDIMS}, r::Real) where {T,NDIMS}
     r > 0 || throw(ArgumentError("search radius must be positive"))
     tns.radius = T(r)
-    tns.cell_size = T(r)
     _mark_all_dirty!(tns)
     return tns
 end
@@ -59,7 +58,6 @@ function add_point_set!(tns::TNS{T,NDIMS}, coords::AbstractMatrix{T}) where {T,N
     push!(tns.permutation, Int32[])
     push!(tns.trees, Octree{T,NDIMS}(coords))
     push!(tns.dirty, true)
-    push!(tns.origin, zero(SVector{NDIMS,T}))
     return length(tns.point_sets)  # set id
 end
 
@@ -143,14 +141,11 @@ function _run_cpu!(tns::TNS{T,NDIMS}) where {T,NDIMS}
             continue
         end
 
-        # origin per set (stable across refits)
         origin = _point_origin(coords)
-        tns.origin[sid] = origin
-
         morton = tns.morton_codes[sid]
         ensure_capacity!(morton, n)
         resize!(morton, n)
-        bin_cpu!(morton, coords, origin, tns.cell_size)
+        bin_cpu!(morton, coords, origin, tns.radius)
 
         perm = tns.permutation[sid]
         ensure_capacity!(perm, n)

@@ -1,10 +1,10 @@
-# Core data structures. CPU and CUDA paths share these shapes; the CUDA ext
-# parameterizes the array types differently (CuArray vs Array).
+# Core data structures, shared by the CPU and CUDA paths (the CUDA ext swaps
+# Array for CuArray through the type parameters).
 
 using StaticArrays
 
 struct PointSet{T,NDIMS,A<:AbstractMatrix{T}}
-    coords::A              # (NDIMS, N) user-owned reference, never copied
+    coords::A              # (NDIMS, N), user-owned reference, never copied
     n::Int32
 end
 
@@ -13,7 +13,7 @@ function PointSet(coords::AbstractMatrix{T}) where {T}
     PointSet{T,NDIMS,typeof(coords)}(coords, Int32(size(coords, 2)))
 end
 
-# Flat SoA octree. Leaves are internal nodes whose children[1] == -1.
+# Flat SoA octree (2^NDIMS-way). A node is a leaf iff children[1] == -1.
 mutable struct Octree{T,NDIMS,
                      VI<:AbstractVector{Int32},
                      MF<:AbstractMatrix{T},
@@ -22,13 +22,12 @@ mutable struct Octree{T,NDIMS,
     node_bounds_max::MF    # (NDIMS, n_nodes)
     node_first::VI         # inclusive first idx into permutation
     node_last::VI          # inclusive last idx
-    node_children::MI      # (2^NDIMS, n_nodes), children[1,i]==-1 marks leaf
+    node_children::MI      # (2^NDIMS, n_nodes); children[1,i]==-1 marks a leaf
     n_nodes::Int32
 end
 
 function Octree{T,NDIMS}(backend_like::AbstractArray) where {T,NDIMS}
-    # Empty skeleton; grown on first build. Children dimension is 2^NDIMS:
-    # 4 for a quadtree, 8 for an octree.
+    # Empty skeleton, grown on first build. 2^NDIMS children (4=quadtree, 8=octree).
     MF = similar(backend_like, T, (NDIMS, 0))
     MI = similar(backend_like, Int32, (1 << NDIMS, 0))
     VI = similar(backend_like, Int32, (0,))
@@ -48,12 +47,10 @@ NeighborBuffer(like::AbstractArray) = NeighborBuffer(
     false,
 )
 
-# Julia-only extension on top of the paper's API: a flat-COO edge representation
-# for downstream consumers (e.g. graph neural networks). Not part of the upstream
-# TreeNSearch interface. `senders[k]` is the target index j; `receivers[k]` is
-# the query index i. `rel_displacement` is the normalized
-# (coords_q[:,i] - coords_t[:,j]) / radius (query minus target). `rel_dist_norm`
-# is ‖coords_q[:,i] - coords_t[:,j]‖ / radius.
+# Flat-COO edges for downstream GNN consumers (not part of upstream TreeNSearch).
+# senders[k] = target j, receivers[k] = query i,
+# rel_displacement = (coords_q[:,i] - coords_t[:,j]) / radius,
+# rel_dist_norm    = ‖coords_q[:,i] - coords_t[:,j]‖ / radius.
 mutable struct EdgeBuffer{T,VI<:AbstractVector{Int32},MF<:AbstractMatrix{T}}
     senders::VI            # length n_edges
     receivers::VI          # length n_edges
@@ -72,15 +69,12 @@ function make_edge_buffer(::Type{T}, ndims::Integer, like::AbstractArray) where 
         senders, receivers, rel_disp, rel_dist, Int32(0), false)
 end
 
-# Main handle. `dev ∈ (:cpu, :cuda)` is inferred from the first
-# `add_point_set!` call.
+# Main handle. `dev ∈ (:cpu, :cuda)` is inferred from the first add_point_set!.
 mutable struct TNS{T,NDIMS}
     dev::Symbol
     radius::T
-    cell_size::T
     target_leaf_size::Int32
     refit_mode::Bool
-    rebuild_threshold::Float32
 
     point_sets::Vector
     active_pairs::Vector{Tuple{Int32,Int32}}
@@ -91,33 +85,28 @@ mutable struct TNS{T,NDIMS}
 
     neighbor_buffers::Vector{NeighborBuffer}
     edge_buffers::Vector{EdgeBuffer}
-    build_scratch::Vector{Int32}
-    # One traversal stack per thread so parallel callers don't race. Indexed
-    # by `Threads.threadid()`; sized at construction to `Threads.nthreads()`.
-    query_stacks::Vector{Vector{Int32}}
+    build_scratch::Vector{Int32}          # reused Pass-A scratch for build_edges_cpu!
+    query_stacks::Vector{Vector{Int32}}   # one stack per thread, indexed by threadid()
 
     dirty::Vector{Bool}
-    origin::Vector
 end
 
 function TNS(::Type{T}=Float32; ndims::Int=3) where {T<:AbstractFloat}
-    # Size to maxthreadid so Julia 1.12+'s dynamic thread migration can't
-    # index out of bounds. Each stack is 256 bytes × threads — trivial.
+    # Size to maxthreadid so Julia 1.12+ dynamic thread migration can't index OOB.
     nstacks = max(Threads.maxthreadid(), Threads.nthreads())
     stacks = [zeros(Int32, 64) for _ in 1:nstacks]
     TNS{T,ndims}(
         :uninitialized,
-        zero(T), zero(T), Int32(32), false, 0.1f0,
+        zero(T), Int32(32), false,
         Any[], Tuple{Int32,Int32}[], Any[],
         Any[], Any[],
         NeighborBuffer[], EdgeBuffer[], Int32[], stacks,
-        Bool[], Any[],
+        Bool[],
     )
 end
 
-# ---- Adapt plumbing (for users who want to move a TNS across devices by hand).
-# This is a best-effort recursive adapt; device-side access uses `device_view`
-# for isbits-safe kernel entry instead.
+# Adapt plumbing for users who move a TNS across devices by hand; kernel entry
+# uses device_view for isbits safety instead.
 import Adapt
 
 Adapt.@adapt_structure PointSet

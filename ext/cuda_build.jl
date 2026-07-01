@@ -279,5 +279,5 @@ function _build_gpu_tree!(gpu_tree::Octree{T,NDIMS}, coords::CuMatrix{T},
     gpu_tree.node_children = nchild[:, 1:n_nodes]
     gpu_tree.n_nodes       = Int32(n_nodes)
 
-    return (perm, want_morton ? morton : nothing, SVector{NDIMS,T}(origin))
+    return (perm, want_morton ? morton : nothing)
 end
