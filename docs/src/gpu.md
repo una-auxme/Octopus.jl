@@ -163,7 +163,8 @@ CUDA.synchronize()
   `using Octopus, CUDA` (and optionally `using StaticArrays` if you also
   use `MVector` directly in your own code).
 - Stack depth is fixed at 40. If your tree is deeper (e.g. very-extreme leaf
-  size ratios), increase the constant in [src/macros.jl](../../src/macros.jl)
+  size ratios), increase the constant in
+  [`src/macros.jl`](https://github.com/una-auxme/Octopus.jl/blob/main/src/macros.jl)
   and rebuild — open an issue if you hit this in practice.
 - `for_each_neighbor_device` is the public function — keep it for read-only
   bodies. The macro is the recommended path for write-pass kernels.
@@ -186,3 +187,8 @@ For a write-pass kernel modelled after `point_neighbor_ns`:
 
 Following this recipe gives you the macro-form numbers above on any modern
 NVIDIA GPU.
+
+---
+
+Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg.
+Released under the MIT License.

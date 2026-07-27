@@ -1,6 +1,6 @@
 name = "Octopus"
 uuid = "49bb3e92-56cb-4d34-aed6-8ee8ef58b458"
-authors = ["Octopus.jl contributors"]
+authors = ["Josef Jouaux, Chair of Mechatronics, University of Augsburg"]
 version = "0.1.0"
 
 [deps]
@@ -29,7 +29,7 @@ GPUArraysCore = "0.1, 0.2"
 Polyester = "0.7"
 SIMD = "3"
 StaticArrays = "1"
-julia = "1.11"
+julia = "1.12"
 
 [extras]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"

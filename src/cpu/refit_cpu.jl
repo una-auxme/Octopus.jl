@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Phase 5: bottom-up AABB fit.
 #
 # Invariant from build: node ids are emitted in BFS order, so any child has a

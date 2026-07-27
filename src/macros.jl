@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Inlined-traversal macros for the device-side neighbor iterator.
 #
 # `for_each_neighbor_device(dv, i) do j ... end` is convenient but Julia boxes

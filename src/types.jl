@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Core data structures, shared by the CPU and CUDA paths (the CUDA ext swaps
 # Array for CuArray through the type parameters).
 
@@ -51,6 +56,30 @@ NeighborBuffer(like::AbstractArray) = NeighborBuffer(
 # senders[k] = target j, receivers[k] = query i,
 # rel_displacement = (coords_q[:,i] - coords_t[:,j]) / radius,
 # rel_dist_norm    = ‖coords_q[:,i] - coords_t[:,j]‖ / radius.
+"""
+    EdgeBuffer
+
+Flat-COO storage for the neighbor relation of one active pair, shaped for
+graph-neural-network consumers. Populated by `build_edges!`; `build_edges`
+returns the same arrays as a NamedTuple.
+
+Fields, with `k` ranging over the `n_edges` emitted edges:
+
+- `senders::AbstractVector{Int32}` — target index `j`.
+- `receivers::AbstractVector{Int32}` — query index `i`.
+- `rel_displacement::AbstractMatrix{T}` — `(NDIMS, n_edges)`, the radius-normalized
+  displacement `(coords_q[:, i] - coords_t[:, j]) / radius`.
+- `rel_dist_norm::AbstractMatrix{T}` — `(1, n_edges)`, the radius-normalized distance
+  `‖coords_q[:, i] - coords_t[:, j]‖ / radius`.
+- `n_edges::Int32`, `materialized::Bool` — fill state.
+
+The arrays live on the same device as the point set, so a CUDA `TNS` yields
+`CuArray`s ready to hand to a model. Storage is reused across calls: a later
+`build_edges!` on the same pair overwrites it. Take copies if you need the
+values to outlive the next call — `build_edges_diff` does exactly this.
+
+Julia-only addition, not part of the upstream C++ TreeNSearch API.
+"""
 mutable struct EdgeBuffer{T,VI<:AbstractVector{Int32},MF<:AbstractMatrix{T}}
     senders::VI            # length n_edges
     receivers::VI          # length n_edges
@@ -70,6 +99,35 @@ function make_edge_buffer(::Type{T}, ndims::Integer, like::AbstractArray) where 
 end
 
 # Main handle. `dev ∈ (:cpu, :cuda)` is inferred from the first add_point_set!.
+"""
+    TNS(T = Float32; ndims = 3) -> TNS{T,ndims}
+
+The main handle: holds the registered point sets, their trees, the active
+search pairs and all reusable scratch. `T` is the coordinate element type and
+`ndims` selects the spatial dimension — `3` builds an octree, `2` a quadtree.
+
+`TNS{Float32}` is the tested and benchmarked configuration. `TNS{Float64}`
+works but is unbenchmarked.
+
+The backend is not chosen here. It is inferred on the first
+[`add_point_set!`](@ref) from the array type of the coordinates: a plain
+`Array` selects the CPU path, a GPU array (e.g. `CuArray`) the CUDA path. All
+point sets on one handle must share a backend.
+
+A typical setup, in order:
+
+```julia
+tns = TNS(Float32; ndims = 3)
+set_search_radius!(tns, 0.02f0)
+id = add_point_set!(tns, xyz)      # xyz is (3, N)
+set_active_search!(tns, id, id)
+run!(tns)
+```
+
+Per-thread traversal stacks are preallocated for `Threads.maxthreadid()`
+threads and grown on demand, so queries are safe to issue from inside threaded
+loops.
+"""
 mutable struct TNS{T,NDIMS}
     dev::Symbol
     radius::T

@@ -1,4 +1,8 @@
-#!/usr/bin/env julia
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # GPU benchmark matching GraphNetSim.jl's `point_neighbor_ns(::CuArray, ...)`.
 # Reference: GraphNetSim.jl/src/graph.jl:319-360
 #

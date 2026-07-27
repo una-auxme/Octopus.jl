@@ -37,8 +37,11 @@ jobs:
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
-        # CUDA tests are opt-in (no GPU on hosted runners); they stay skipped
-        # unless JULIA_OCTOPUS_TEST_CUDA=1.
+        env:
+          # The ChainRules/Zygote path needs no GPU, so exercise it on every
+          # job. CUDA tests stay opt-in (no GPU on hosted runners) and remain
+          # skipped unless JULIA_OCTOPUS_TEST_CUDA=1.
+          JULIA_OCTOPUS_TEST_CHAINRULES: '1'
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v4
         with:

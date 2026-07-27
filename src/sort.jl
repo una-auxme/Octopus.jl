@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # CPU sort dispatch. GPU path lives in the CUDA extension.
 #
 # We want: perm[1..N] such that keys[perm[k]] is nondecreasing.

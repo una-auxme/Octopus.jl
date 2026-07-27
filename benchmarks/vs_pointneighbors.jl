@@ -1,4 +1,8 @@
-#!/usr/bin/env julia
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Head-to-head comparison: Octopus.jl vs PointNeighbors.jl.
 #
 # For each configuration (N, radius, distribution) we measure:

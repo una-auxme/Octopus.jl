@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Public API. Orchestrates the CPU phase sequence; dispatches to the CUDA
 # extension via hooks declared in Octopus.jl when the user passes GPU
 # coords.
@@ -6,6 +11,15 @@ using StaticArrays
 
 # ---------------- configuration -------------------------------------------
 
+"""
+    set_search_radius!(tns, r) -> tns
+
+Set the fixed search radius `r` for every active pair. Must be called before
+`run!`. Changing the radius marks all point sets dirty, so the next `run!`
+rebuilds their trees.
+
+Throws `ArgumentError` if `r <= 0`.
+"""
 function set_search_radius!(tns::TNS{T,NDIMS}, r::Real) where {T,NDIMS}
     r > 0 || throw(ArgumentError("search radius must be positive"))
     tns.radius = T(r)
@@ -13,6 +27,18 @@ function set_search_radius!(tns::TNS{T,NDIMS}, r::Real) where {T,NDIMS}
     return tns
 end
 
+"""
+    set_refit_mode!(tns, on::Bool) -> tns
+
+Toggle the paper's almost-sorted refit path, intended for time-stepping
+simulations where points move little between steps. When `on`, the Morton
+codes from the previous build are retained so the next `run!` can detect cell
+crossings instead of rebuilding from scratch; when `off` (the default) that
+scratch is released after each `run!` to keep steady-state memory minimal.
+
+Marks all point sets dirty. Julia-only convenience: the upstream C++
+TreeNSearch API does not expose this as a user toggle.
+"""
 function set_refit_mode!(tns::TNS, on::Bool)
     tns.refit_mode = on
     _mark_all_dirty!(tns)
@@ -49,6 +75,23 @@ end
 const _CUDA_EXT_LOADED = Ref(false)
 _cuda_ext_loaded() = _CUDA_EXT_LOADED[]
 
+"""
+    add_point_set!(tns, coords) -> set_id
+
+Register an `(NDIMS, N)` coordinate matrix as a new point set and return its
+integer id, used to refer to the set in `set_active_search!`,
+`for_each_neighbor`, `build_edges` and friends.
+
+`coords` is referenced, never copied — mutating it in place and calling `run!`
+again is the intended update path for simulations.
+
+The backend is inferred from the array type on the first call: a plain `Array`
+selects `:cpu`, a GPU array (e.g. `CuArray`) selects `:cuda`. All point sets
+registered on one `TNS` must share a backend, and GPU coords require `CUDA.jl`
+to be loaded so the extension is active.
+
+Throws `DimensionMismatch` if `size(coords, 1) != NDIMS`.
+"""
 function add_point_set!(tns::TNS{T,NDIMS}, coords::AbstractMatrix{T}) where {T,NDIMS}
     size(coords, 1) == NDIMS || throw(DimensionMismatch("coords must be ($NDIMS, N)"))
     _infer_dev!(tns, coords)
@@ -61,6 +104,17 @@ function add_point_set!(tns::TNS{T,NDIMS}, coords::AbstractMatrix{T}) where {T,N
     return length(tns.point_sets)  # set id
 end
 
+"""
+    resize_point_set!(tns, set_id, coords) -> tns
+
+Replace the coordinates of point set `set_id`, allowing the point count `N` to
+change. Marks the set dirty so the next `run!` rebuilds its tree.
+
+Use `update_point_set!` when `N` is expected to stay the same and you want that
+checked.
+
+Throws `DimensionMismatch` if `size(coords, 1) != NDIMS`.
+"""
 function resize_point_set!(tns::TNS{T,NDIMS}, set_id::Integer, coords::AbstractMatrix{T}) where {T,NDIMS}
     size(coords, 1) == NDIMS || throw(DimensionMismatch("coords must be ($NDIMS, N)"))
     tns.point_sets[set_id] = PointSet(coords)
@@ -111,6 +165,20 @@ end
 
 # ---------------- run ------------------------------------------------------
 
+"""
+    run!(tns) -> tns
+
+Build (or refit) the search structure for every dirty point set: bin points to
+Morton cells, sort, build the tree top-down, then fit node bounds bottom-up.
+Dispatches to the CPU or CUDA path according to the backend inferred by
+`add_point_set!`.
+
+Call this after `set_search_radius!` and at least one `add_point_set!`, and
+again whenever coordinates change. Neighbor and edge buffers are invalidated,
+so any previously materialized lists must be rebuilt before use.
+
+Throws `ArgumentError` if no radius was set or no point set was added.
+"""
 function run!(tns::TNS{T,NDIMS}) where {T,NDIMS}
     tns.radius > 0 || throw(ArgumentError("set_search_radius! before run!"))
     if tns.dev === :cpu
@@ -310,6 +378,20 @@ end
 # ---------------- device-side iterator stubs ------------------------------
 # These dispatch to the CUDA extension at runtime when the user is on GPU.
 
+"""
+    device_view(tns, qid, tid) -> DeviceView
+
+Return an isbits handle holding the device arrays for the active pair
+`(qid, tid)`, safe to pass into a user `@cuda` kernel as an argument. Inside
+the kernel, iterate with `for_each_neighbor_device` or the
+`@for_each_neighbor_device_inline` macro.
+
+The handle borrows the tree and coordinate arrays owned by `tns`, so it is
+invalidated by the next `run!`; take a fresh view after each rebuild.
+
+Requires a CUDA `TNS` (throws otherwise) and `using CUDA` so the extension is
+loaded. Julia-only addition, not part of the upstream C++ TreeNSearch API.
+"""
 function device_view(tns::TNS, qid::Integer, tid::Integer)
     tns.dev === :cuda || error("device_view requires a CUDA TNS")
     return _device_view(tns, qid, tid)
@@ -317,4 +399,27 @@ end
 
 # Placeholder so symbol resolves; the real method lives in the CUDA ext and
 # uses `@inline` so the user's `@cuda` kernel inlines the traversal.
+"""
+    for_each_neighbor_device(f, dv::DeviceView, i)
+
+Device-side counterpart of `for_each_neighbor`: call `f(j)` for every point `j`
+within `radius` of query point `i`, from inside a `@cuda` kernel. `dv` comes
+from `device_view`.
+
+The callback must not write to a captured scalar — a mutable local would be
+boxed and rejected by the GPU compiler. Write into an array slot instead:
+
+```julia
+for_each_neighbor_device(dv, i) do j
+    @inbounds counts[i] += Int32(1)
+end
+```
+
+Unlike the host `for_each_neighbor`, the self-pair filter is *not* applied;
+skip `j == i` yourself when `qid == tid`. For the hot path prefer
+`@for_each_neighbor_device_inline`, which keeps the traversal cursor in a
+register.
+
+Defined by the `OctopusCUDAExt` extension; requires `using CUDA`.
+"""
 function for_each_neighbor_device end

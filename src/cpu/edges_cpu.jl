@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Two-pass edge construction. Pass A counts neighbors per query point; pass B
 # fills flat-COO senders/receivers and per-edge displacement/distance using the
 # diff already produced in the leaf inner loop. Sign convention:

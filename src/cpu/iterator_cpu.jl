@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Host-side lazy iteration. Zero allocation per call (stack-based traversal
 # using an MVector). The inner distance loop is the paper's "over-approximate
 # and just SIMD-crunch the distances" trick — branchless, cache-hot.
@@ -208,6 +213,31 @@ end
 
 # Public: iterate neighbors of point `i` in querying set qid, found in target
 # set tid, calling `f(j)` for each matching target index.
+"""
+    for_each_neighbor(f, tns, qid, tid, i)
+
+Call `f(j)` for every point `j` in target set `tid` lying within `radius` of
+point `i` in query set `qid`. This is the zero-allocation iteration primitive —
+neighbors are visited during traversal rather than collected, so nothing lands
+on the heap in the hot loop.
+
+Intended for `do`-block syntax:
+
+```julia
+for_each_neighbor(tns, qid, tid, i) do j
+    # use neighbor j
+end
+```
+
+Run `run!(tns)` first. Self-pairs are *not* filtered: when `qid == tid` the
+callback also fires for `j == i`, so skip it yourself if unwanted (this is
+what `get_neighborlist` does).
+
+Thread-safe — each caller gets its own traversal stack, indexed by thread id.
+
+Host-side and CPU-only; on a CUDA `TNS` use `for_each_neighbor_device` inside
+your own kernel, or `build_edges` for a materialized edge list.
+"""
 function for_each_neighbor(f::F, tns::TNS{T,NDIMS}, qid::Integer, tid::Integer, i::Integer) where {F,T,NDIMS}
     tns.dev === :cpu || error("for_each_neighbor (host) requires a CPU TNS; use for_each_neighbor_device on GPU")
     # Per-thread stack so concurrent callers don't race on one shared buffer.

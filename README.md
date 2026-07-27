@@ -1,5 +1,10 @@
 # Octopus.jl 🐙
 
+[![Dev docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://una-auxme.github.io/Octopus.jl/dev/)
+[![CI](https://github.com/una-auxme/Octopus.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/una-auxme/Octopus.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/una-auxme/Octopus.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/una-auxme/Octopus.jl)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 Fast octree neighborhood search for Julia — on CPU and NVIDIA GPUs.
 
 > *Eight octants, eight arms.* An octree carves space into **8** children at every
@@ -17,6 +22,8 @@ reference API, and adds Julia-idiomatic and GPU-friendly conveniences on top
 Zero-allocation iteration via `for_each_neighbor` (host) or
 `for_each_neighbor_device` (inside the user's `@cuda` kernel, NVIDIA only in v0.1).
 
+**[📖 Documentation](https://una-auxme.github.io/Octopus.jl/dev/)**
+
 ## Why Octopus.jl?
 
 - **Fast.** A cache-friendly Morton/octree build with an almost-sorted refit path
@@ -24,9 +31,25 @@ Zero-allocation iteration via `for_each_neighbor` (host) or
 - **Allocation-free hot loop.** Iterate neighbors through a callback rather than
   materializing neighbor lists — no garbage on the critical path.
 - **CPU and GPU from one API.** The same calls run multithreaded on the CPU
-  (Polyester + SIMD) or on NVIDIA GPUs via a CUDA weak extension.
+  (Polyester + SIMD) or on NVIDIA GPUs via a CUDA weak extension, where the tree
+  build is fully device-resident.
 - **GNN-ready.** Build flat-COO edge buffers and differentiate through them
   (Zygote / ChainRules), so neighbor graphs can sit inside a learned model.
+
+## Installation
+
+```julia
+using Pkg
+Pkg.add("Octopus")
+```
+
+Requires Julia 1.12 or newer. The GPU and autodiff paths are weak dependencies,
+loaded only when you import them:
+
+```julia
+Pkg.add("CUDA")             # optional: NVIDIA GPU backend
+Pkg.add("ChainRulesCore")   # optional: gradients via build_edges_diff
+```
 
 ## Quick start
 
@@ -48,9 +71,11 @@ end
 ## GPU usage (CUDA)
 
 The GPU path lives in a weak extension that loads automatically when `CUDA` is
-imported. Pass `CuArray` coordinates and the same API runs on the device — the
-build is hosted on the CPU in v0.1, while all per-query traversal stays on the
-GPU. NVIDIA only.
+imported. Pass `CuArray` coordinates and the same API runs on the device: the
+origin reduction, Morton encoding, sort, topology pass and bounds refit all run
+in device kernels, so coordinates never round-trip through the host. NVIDIA
+only. See the [GPU guide](https://una-auxme.github.io/Octopus.jl/dev/gpu/) for
+in-kernel iteration and tuning.
 
 ```julia
 using Octopus, CUDA            # importing CUDA activates the GPU extension
@@ -95,6 +120,70 @@ threads = 128
 For the hot path, `@for_each_neighbor_device_inline dv i j begin … end` (and the
 `_2d` variant) inlines the traversal so the cursor stays in a register — measurably
 faster than the closure form when emitting many edges per point.
+
+## Differentiable edges (GNN)
+
+`build_edges_diff` backpropagates through the edge features, so a radius graph
+can sit inside a learned model. Gradients reach the coordinates via
+`rel_displacement` and `rel_dist_norm`; the tree topology and the edge indices
+are treated as constants.
+
+```julia
+using Octopus, ChainRulesCore, Zygote   # ChainRulesCore activates the extension
+
+radius = 0.25f0
+
+function loss(coords)
+    tns = TNS(Float32)
+    set_search_radius!(tns, radius)
+    id = add_point_set!(tns, coords)
+    set_active_search!(tns, id, id)
+    run!(tns)
+
+    e = build_edges_diff(coords, tns, id, radius)
+    return sum(abs2, e.rel_displacement) + 0.5f0 * sum(abs2, e.rel_dist_norm)
+end
+
+g = Zygote.gradient(loss, rand(Float32, 3, 1_000))[1]   # (3, 1000)
+```
+
+Add `using CUDA` for the GPU rule. Details and correctness notes in the
+[differentiable-edges guide](https://una-auxme.github.io/Octopus.jl/dev/gnn/).
+
+## Documentation
+
+- [Guide](https://una-auxme.github.io/Octopus.jl/dev/guide/) — the full
+  workflow: point sets, active pairs, iteration, materialized lists, refit
+  mode, z-sorting.
+- [GPU (CUDA)](https://una-auxme.github.io/Octopus.jl/dev/gpu/) — device
+  build, in-kernel iteration, tuning.
+- [Differentiable edges](https://una-auxme.github.io/Octopus.jl/dev/gnn/) —
+  gradients through the neighbor graph.
+- [API reference](https://una-auxme.github.io/Octopus.jl/dev/api/) — every
+  exported symbol.
+
+## Development
+
+```console
+$ git clone https://github.com/una-auxme/Octopus.jl
+$ cd Octopus.jl
+$ julia --project=. -e 'using Pkg; Pkg.test()'
+```
+
+Two test groups are opt-in via environment variables, since they need extra
+precompilation or hardware:
+
+| Variable | Enables | Needs |
+|---|---|---|
+| `JULIA_OCTOPUS_TEST_CHAINRULES=1` | ChainRules / Zygote gradient tests | — (runs in CI) |
+| `JULIA_OCTOPUS_TEST_CUDA=1` | CUDA backend tests | an NVIDIA GPU |
+
+To build the docs locally:
+
+```console
+$ julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+$ julia --project=docs docs/make.jl
+```
 
 ## Scope (v0.1)
 
@@ -148,3 +237,9 @@ If you use this package, please cite the original paper:
   doi = {10.1145/3550454.3555523},
 }
 ```
+
+## License
+
+Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg.
+
+Released under the MIT License — see [LICENSE](LICENSE).

@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Phase 4: parallel top-down tree build over the sorted Morton order.
 #
 # The tree is 2^NDIMS-way (octree for 3D, quadtree for 2D). Each node holds a

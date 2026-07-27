@@ -1,4 +1,8 @@
-#!/usr/bin/env julia
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Benchmark matching GraphNetSim.jl's `point_neighbor_ns` usage pattern:
 #   build nhs -> count neighbors per particle -> allocate edge arrays
 #   -> populate senders/receivers/rel_displacement/rel_dist_norm.

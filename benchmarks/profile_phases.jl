@@ -1,4 +1,8 @@
-#!/usr/bin/env julia
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Phase 0 of the v0.2 plan: profile each phase of both Octopus and
 # PointNeighbors on the GraphNetSim `point_neighbor_ns` GPU pipeline, so we
 # can answer "is tree shape really the 2D bottleneck?".

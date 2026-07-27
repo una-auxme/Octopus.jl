@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Phase 1: bin every particle to a grid cell and compute its Morton code.
 #
 # Dispatch is by coord row count (3D vs 2D) via SVector{NDIMS,T} origin type.

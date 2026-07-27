@@ -1,0 +1,6 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Octopus = "49bb3e92-56cb-4d34-aed6-8ee8ef58b458"
+
+[compat]
+Documenter = "1"

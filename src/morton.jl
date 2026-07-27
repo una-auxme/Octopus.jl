@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Morton (Z-order) encoding for cell coordinates.
 # 3D: 21 bits per axis -> 63-bit code packed in UInt64.
 # 2D: 31 bits per axis -> 62-bit code packed in UInt64 (top bit zero so

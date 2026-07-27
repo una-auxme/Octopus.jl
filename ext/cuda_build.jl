@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # GPU-resident octree build. Replaces the v0.1 host round-trip (copy coords
 # D→H, bin/sort/build/refit on CPU single-threaded, upload tree H→D) with an
 # all-device pipeline:

@@ -1,4 +1,8 @@
-#!/usr/bin/env julia
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Correctness check: Octopus.jl vs GraphNetSim.jl's `build_graph` neighbor
 # search core (`point_neighbor_ns`, which is the only TNS-relevant moving part
 # inside build_graph — the rest is feature normalization).

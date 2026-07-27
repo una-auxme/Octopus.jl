@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 # Apply the z-order permutation to user arrays.
 # prepare_zsort! ensures the permutation for every registered point set is available
 # (requires refit_mode, or at least that the current build kept it).

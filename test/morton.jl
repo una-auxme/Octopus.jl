@@ -1,3 +1,8 @@
+#
+# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
+
 using Test
 using Octopus: morton_encode3, morton_decode3, morton_encode2, morton_decode2, bin_point
 
