@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Copyright (c) 2026 Josef Jouaux
 # Licensed under the MIT license. See LICENSE file in the project root for details.
 #
 

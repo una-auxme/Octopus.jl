@@ -70,5 +70,5 @@ apply_zsort!
 
 ---
 
-Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg.
+Copyright (c) 2026 Josef Jouaux.
 Released under the MIT License.

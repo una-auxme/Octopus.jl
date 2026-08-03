@@ -111,5 +111,5 @@ $ JULIA_OCTOPUS_TEST_CHAINRULES=1 julia --project=. -e 'using Pkg; Pkg.test()'
 
 ---
 
-Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg.
+Copyright (c) 2026 Josef Jouaux.
 Released under the MIT License.
