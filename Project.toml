@@ -1,6 +1,6 @@
 name = "Octopus"
 uuid = "49bb3e92-56cb-4d34-aed6-8ee8ef58b458"
-authors = ["Josef Jouaux, Chair of Mechatronics, University of Augsburg"]
+authors = ["Josef Jouaux"]
 version = "0.1.0"
 
 [deps]

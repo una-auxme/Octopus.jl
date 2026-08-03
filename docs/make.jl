@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Josef Jouaux, Chair of Mechatronics, University of Augsburg
+# Copyright (c) 2026 Josef Jouaux
+# Copyright (c) 2022-present, CompactNSearch contributors
 
 using Documenter
 using Octopus
