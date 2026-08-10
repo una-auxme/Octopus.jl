@@ -135,12 +135,26 @@ mutable struct TNS{T,NDIMS}
     target_leaf_size::Int32
     refit_mode::Bool
 
-    point_sets::Vector
+    # These five are heterogeneous by design: the backend is not known until the
+    # first `add_point_set!`, so a CPU handle stores `Vector{Int32}`/`Matrix{T}`
+    # here and a CUDA handle stores the `CuArray` equivalents. Encoding that in
+    # the type parameters would mean fixing the backend at construction and
+    # giving up the inference described in `add_point_set!`.
+    #
+    # They are `Vector{Any}` rather than the weaker `Vector`, which is the
+    # abstract `Vector{U} where U`: with `Vector`, even `length`/`getindex` on
+    # the container dispatch dynamically. `Vector{Any}` is a concrete container,
+    # so only the *elements* stay dynamic — and every hot path crosses a
+    # function barrier (`_for_each_neighbor_barrier`, `build_edges_cpu!`,
+    # `materialize_cpu!`) that specializes on the concrete element types. The
+    # allocation tests in test/memory.jl pin the result: 16 B at the entry
+    # point, 0 B inside the barrier.
+    point_sets::Vector{Any}
     active_pairs::Vector{Tuple{Int32,Int32}}
-    trees::Vector
+    trees::Vector{Any}
 
-    morton_codes::Vector
-    permutation::Vector
+    morton_codes::Vector{Any}
+    permutation::Vector{Any}
 
     neighbor_buffers::Vector{NeighborBuffer}
     edge_buffers::Vector{EdgeBuffer}
@@ -153,7 +167,11 @@ end
 function TNS(::Type{T}=Float32; ndims::Int=3) where {T<:AbstractFloat}
     # Size to maxthreadid so Julia 1.12+ dynamic thread migration can't index OOB.
     nstacks = max(Threads.maxthreadid(), Threads.nthreads())
-    stacks = [zeros(Int32, 64) for _ in 1:nstacks]
+    # Each traversal stack holds the worst-case DFS frontier (148 entries in 3D,
+    # 94 in 2D — under 600 B/thread), so the `@inbounds` pushes in the traversal
+    # are bounded by construction rather than by assumption.
+    depth = _max_stack_depth(Val(ndims))
+    stacks = [zeros(Int32, depth) for _ in 1:nstacks]
     TNS{T,ndims}(
         :uninitialized,
         zero(T), Int32(32), false,

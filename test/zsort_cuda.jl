@@ -11,7 +11,7 @@ using CUDA
 if !CUDA.functional()
     @info "CUDA unavailable; skipping GPU zsort tests"
 else
-    @testset "apply_zsort! CUDA 1-D" begin
+    @testset "apply_zsort CUDA 1-D" begin
         Random.seed!(311)
         coords = rand(Float32, 3, 256)
         gpu_coords = CuArray(coords)
@@ -23,14 +23,14 @@ else
 
         masses_h = rand(Float32, 256)
         masses = CuArray(masses_h)
-        sorted = apply_zsort!(tns, id, masses)
+        sorted = apply_zsort(tns, id, masses)
 
         perm_h = Array(tns.permutation[id])
         @test sorted isa CuArray{Float32,1}
         @test Array(sorted) == [masses_h[perm_h[i]] for i in eachindex(perm_h)]
     end
 
-    @testset "apply_zsort! CUDA 2-D" begin
+    @testset "apply_zsort CUDA 2-D" begin
         Random.seed!(313)
         coords = rand(Float32, 3, 256)
         gpu_coords = CuArray(coords)
@@ -42,7 +42,7 @@ else
 
         feats_h = rand(Float32, 5, 256)
         feats = CuArray(feats_h)
-        sorted = apply_zsort!(tns, id, feats)
+        sorted = apply_zsort(tns, id, feats)
 
         perm_h = Array(tns.permutation[id])
         ref = similar(feats_h)
@@ -53,7 +53,7 @@ else
         @test Array(sorted) == ref
     end
 
-    @testset "apply_zsort! CUDA rejects 3-D input" begin
+    @testset "apply_zsort CUDA rejects 3-D input" begin
         Random.seed!(317)
         coords = rand(Float32, 3, 64)
         gpu_coords = CuArray(coords)
@@ -64,6 +64,6 @@ else
         run!(tns)
 
         feats = CuArray(rand(Float32, 2, 2, 64))
-        @test_throws ArgumentError apply_zsort!(tns, id, feats)
+        @test_throws ArgumentError apply_zsort(tns, id, feats)
     end
 end

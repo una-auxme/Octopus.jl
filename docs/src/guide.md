@@ -199,21 +199,26 @@ when points jump arbitrarily.
 
 The build computes a Morton-order permutation. Reordering your per-point data
 to match it improves cache locality for everything downstream.
-[`apply_zsort!`](@ref) returns a permuted copy of any array whose last axis is
+[`apply_zsort`](@ref) returns a permuted copy of any array whose last axis is
 the point axis — a length-`N` vector or an `(F, N)` matrix:
 
 ```julia
 run!(tns)
-prepare_zsort!(tns)               # asserts the permutation is available
+prepare_zsort(tns)               # asserts the permutation is available
 
-masses    = apply_zsort!(tns, id, masses)
-velocities = apply_zsort!(tns, id, velocities)   # (3, N) works too
+masses    = apply_zsort(tns, id, masses)
+velocities = apply_zsort(tns, id, velocities)   # (3, N) works too
 ```
 
-[`prepare_zsort!`](@ref) is a precondition check that mirrors the C++ API — it
+[`prepare_zsort`](@ref) is a precondition check that mirrors the C++ API — it
 gives a clear error if `run!` has not been called yet. It allocates nothing and
-is safe (but unnecessary) to call every step. Note that `apply_zsort!` returns
-a *new* array rather than permuting in place, despite the `!`.
+is safe (but unnecessary) to call every step. Note that `apply_zsort` returns
+a *new* array rather than permuting its argument.
+
+!!! note "Renamed in v0.2"
+    These were spelled `prepare_zsort!` and `apply_zsort!` in v0.1, mirroring
+    the C++ names. Neither mutates an argument, so the `!` was misleading under
+    the Julia convention. The bang spellings still work and are deprecated.
 
 ## Which API is which?
 
@@ -221,7 +226,7 @@ These names mirror the paper and the C++ TreeNSearch reference implementation:
 [`TNS`](@ref), [`set_search_radius!`](@ref), [`add_point_set!`](@ref),
 [`resize_point_set!`](@ref), [`set_active_search!`](@ref), [`run!`](@ref),
 [`for_each_neighbor`](@ref), [`get_neighborlist`](@ref),
-[`prepare_zsort!`](@ref), [`apply_zsort!`](@ref).
+[`prepare_zsort`](@ref), [`apply_zsort`](@ref).
 
 These are Julia-only additions layered on top, for Julia idioms or GPU usage:
 [`set_refit_mode!`](@ref), [`update_point_set!`](@ref),

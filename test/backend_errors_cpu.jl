@@ -56,15 +56,15 @@ end
     @test length(e1.senders) > 0
 end
 
-@testset "prepare_zsort! errors when run! hasn't populated perm" begin
+@testset "prepare_zsort errors when run! hasn't populated perm" begin
     Random.seed!(5004)
     coords = rand(Float32, 3, 50)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    @test_throws ErrorException prepare_zsort!(tns)
+    @test_throws ErrorException prepare_zsort(tns)
 end
 
-@testset "apply_zsort! rejects mismatched length" begin
+@testset "apply_zsort rejects mismatched length" begin
     Random.seed!(5005)
     coords = rand(Float32, 3, 50)
     tns = TNS(Float32); set_search_radius!(tns, 0.1f0)
@@ -74,7 +74,7 @@ end
 
     # Wrong length triggers the @assert inside apply_zsort_cpu! (AssertionError).
     wrong = rand(Float32, 49)
-    @test_throws AssertionError apply_zsort!(tns, id, wrong)
+    @test_throws AssertionError apply_zsort(tns, id, wrong)
 end
 
 @testset "set_search_radius! rejects zero and negative" begin

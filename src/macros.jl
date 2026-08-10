@@ -70,7 +70,7 @@ macro for_each_neighbor_device_inline(dv_expr, i_expr, j_sym, body_expr)
             _py = @inbounds _dv.coords_q[2, _i]
             _pz = @inbounds _dv.coords_q[3, _i]
 
-            _stack = StaticArrays.MVector{40, Int32}(undef)
+            _stack = StaticArrays.MVector{STACK_DEPTH_3D, Int32}(undef)
             _sp = 1
             @inbounds _stack[_sp] = Int32(1)
 
@@ -134,7 +134,7 @@ macro for_each_neighbor_device_inline_2d(dv_expr, i_expr, j_sym, body_expr)
             _px = @inbounds _dv.coords_q[1, _i]
             _py = @inbounds _dv.coords_q[2, _i]
 
-            _stack = StaticArrays.MVector{40, Int32}(undef)
+            _stack = StaticArrays.MVector{STACK_DEPTH_2D, Int32}(undef)
             _sp = 1
             @inbounds _stack[_sp] = Int32(1)
 

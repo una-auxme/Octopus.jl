@@ -14,11 +14,14 @@
 
 # Grow the per-thread stack vector lazily on first use by a new thread id.
 # Protected by a lock so concurrent growths can't corrupt the backing array.
+# Each stack is sized to `_max_stack_depth`, the proven worst-case DFS frontier,
+# so the `@inbounds` pushes below can never run off the end.
 const _QUERY_STACKS_LOCK = ReentrantLock()
-function _grow_query_stacks!(tns, tid::Int)
+function _grow_query_stacks!(tns::TNS{T,NDIMS}, tid::Int) where {T,NDIMS}
+    depth = _max_stack_depth(Val(NDIMS))
     lock(_QUERY_STACKS_LOCK) do
         while length(tns.query_stacks) < tid
-            push!(tns.query_stacks, zeros(Int32, 64))
+            push!(tns.query_stacks, zeros(Int32, depth))
         end
     end
     return nothing

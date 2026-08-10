@@ -64,6 +64,16 @@ build_edges_diff
 ## Z-sorting
 
 ```@docs
+prepare_zsort
+apply_zsort
+```
+
+## Deprecated
+
+Retained so v0.1 callers keep working; both forward to the non-bang spellings
+and warn.
+
+```@docs
 prepare_zsort!
 apply_zsort!
 ```

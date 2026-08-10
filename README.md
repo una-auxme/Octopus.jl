@@ -30,9 +30,10 @@ Zero-allocation iteration via `for_each_neighbor` (host) or
   for time-stepping simulations where points barely move between steps.
 - **Allocation-free hot loop.** Iterate neighbors through a callback rather than
   materializing neighbor lists — no garbage on the critical path.
-- **CPU and GPU from one API.** The same calls run multithreaded on the CPU
-  (Polyester + SIMD) or on NVIDIA GPUs via a CUDA weak extension, where the tree
-  build is fully device-resident.
+- **CPU and GPU from one API.** The same calls run on the CPU or on NVIDIA GPUs
+  via a CUDA weak extension, where the tree build is fully device-resident. On
+  the CPU the binning pass is multithreaded (Polyester); the tree build, refit,
+  and edge construction are currently serial.
 - **GNN-ready.** Build flat-COO edge buffers and differentiate through them
   (Zygote / ChainRules), so neighbor graphs can sit inside a learned model.
 
@@ -199,7 +200,11 @@ $ julia --project=docs docs/make.jl
 The following names mirror the paper and the C++ TreeNSearch reference
 implementation directly: `TNS`, `set_search_radius!`, `add_point_set!`,
 `resize_point_set!`, `set_active_search!`, `run!`, `for_each_neighbor`,
-`get_neighborlist`, `prepare_zsort!`, `apply_zsort!`.
+`get_neighborlist`, `prepare_zsort`, `apply_zsort`.
+
+The two z-sort entry points dropped their `!` in v0.2 — neither mutates an
+argument, so the bang was misleading under the Julia convention. The v0.1
+spellings `prepare_zsort!` / `apply_zsort!` still work and are deprecated.
 
 ## Julia-only extensions
 

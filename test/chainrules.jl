@@ -183,6 +183,84 @@ end
     @test all(t -> t isa ChainRulesCore.NoTangent, out_run)
 end
 
+# ---- 7b. apply_zsort is differentiable (gather → scatter) ----------------
+#
+# Before the rrule, this path failed on CPU with "Mutating arrays is not
+# supported -- called setindex!" (apply_zsort_cpu! fills its output with
+# setindex! even though the function is externally pure), while the CUDA path
+# worked because it is written as fancy indexing. These pin the CPU behaviour.
+
+# Build a TNS whose permutation is non-trivial, and return it with the perm.
+function _zsort_fixture(N, seed)
+    Random.seed!(seed)
+    coords = rand(Float32, 3, N)
+    tns = TNS(Float32)
+    set_search_radius!(tns, 0.15f0)
+    id = add_point_set!(tns, coords)
+    set_active_search!(tns, id, id)
+    run!(tns)
+    return tns, id, copy(tns.permutation[id])
+end
+
+@testset "apply_zsort: CPU gradient exists (1-D)" begin
+    tns, id, perm = _zsort_fixture(200, 8200)
+    x = rand(Float32, 200)
+    # A permutation is a bijection, so sum(abs2, permuted) == sum(abs2, x)
+    # and the gradient must come back as exactly 2x, unpermuted.
+    g = Zygote.gradient(v -> sum(abs2, apply_zsort(tns, id, v)), x)[1]
+    @test g ≈ 2 .* x
+    @test size(g) == size(x)
+    @test !all(==(perm[1]), perm)   # guard: the fixture's perm is non-trivial
+end
+
+@testset "apply_zsort: CPU gradient is the scatter, not the gather (1-D)" begin
+    # The abs2 test above is invariant under inverting the permutation, so it
+    # cannot catch a transposed adjoint. This one can: with a non-symmetric
+    # weight vector, d/dx sum(w .* x[perm]) is w scattered through perm.
+    tns, id, perm = _zsort_fixture(200, 8201)
+    x = rand(Float32, 200)
+    w = Float32.(1:200)
+
+    g = Zygote.gradient(v -> sum(w .* apply_zsort(tns, id, v)), x)[1]
+
+    expected = zeros(Float32, 200)
+    expected[perm] = w
+    @test g ≈ expected
+    # Sanity: the gather (wrong direction) really would differ here.
+    @test !(g ≈ w[perm])
+end
+
+@testset "apply_zsort: CPU gradient (2-D, permutes columns)" begin
+    tns, id, perm = _zsort_fixture(150, 8202)
+    X = rand(Float32, 4, 150)
+    W = Float32.(reshape(1:(4 * 150), 4, 150))
+
+    g = Zygote.gradient(V -> sum(W .* apply_zsort(tns, id, V)), X)[1]
+
+    expected = zeros(Float32, 4, 150)
+    expected[:, perm] = W
+    @test size(g) == size(X)
+    @test g ≈ expected
+end
+
+@testset "apply_zsort: CPU gradient ≈ central diff" begin
+    tns, id, _ = _zsort_fixture(60, 8203)
+    X64 = rand(Float64, 2, 60)
+    loss(V) = sum(abs2, apply_zsort(tns, id, V) .* 1.7)
+
+    g  = Zygote.gradient(loss, X64)[1]
+    fd = _central_diff(loss, X64, 1e-5)
+    @test g ≈ fd rtol = 1e-6
+end
+
+@testset "apply_zsort: zero upstream tangent yields zero gradient" begin
+    tns, id, _ = _zsort_fixture(50, 8204)
+    x = rand(Float32, 50)
+    # Loss ignores the z-sorted values entirely.
+    g = Zygote.gradient(v -> sum(abs2, apply_zsort(tns, id, v)) * 0.0f0, x)[1]
+    @test g === nothing || all(iszero, g)
+end
+
 # ---- 8. GPU rrule matches the (FD-verified) CPU rrule --------------------
 # The GPU `build_edges_diff` rrule is a SEPARATE hand-written atomic-add kernel
 # (OctopusCUDAChainRulesCoreExt), so the finite-difference tests above —
@@ -226,6 +304,37 @@ if get(ENV, "JULIA_OCTOPUS_TEST_CUDA", "0") == "1"
             g_gpu = Zygote.gradient(c -> _edge_loss(c, radius, D, mode), CuArray(coords))[1]
 
             @test Array(g_gpu) ≈ g_cpu rtol = 1.0f-3 atol = 1.0f-5
+        end
+
+        # The `apply_zsort` rrule is generic, so on GPU it now *replaces* the
+        # native Zygote `getindex` adjoint the CUDA path relied on before. The
+        # scatter is written vectorised (`grad[:, perm] = Δ`) specifically so it
+        # stays on the device; a scalar-indexing regression would either throw
+        # under CUDA's scalar-iteration guard or silently crawl. These pin both
+        # the value and the device-residency.
+        @testset "GPU apply_zsort gradient matches CPU ($(D)-D)" for D in (1, 2)
+            Random.seed!(8300 + D)
+            coords = rand(Float32, 3, 128)
+
+            function _zs_loss(v, c)
+                tns = TNS(Float32)
+                set_search_radius!(tns, 0.15f0)
+                i = add_point_set!(tns, c)
+                set_active_search!(tns, i, i)
+                run!(tns)
+                z = apply_zsort(tns, i, v)
+                return sum(abs2, z) + 2.0f0 * sum(z)
+            end
+
+            x_cpu = D == 1 ? rand(Float32, 128) : rand(Float32, 4, 128)
+            x_gpu = CuArray(x_cpu)
+
+            g_cpu = Zygote.gradient(v -> _zs_loss(v, coords), x_cpu)[1]
+            g_gpu = Zygote.gradient(v -> _zs_loss(v, CuArray(coords)), x_gpu)[1]
+
+            @test g_gpu isa CuArray            # stayed on the device
+            @test size(g_gpu) == size(x_cpu)
+            @test Array(g_gpu) ≈ g_cpu rtol = 1.0f-5
         end
     end
 end
