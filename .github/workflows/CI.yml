@@ -53,6 +53,11 @@ jobs:
           # job. CUDA tests stay opt-in (no GPU on hosted runners) and remain
           # skipped unless JULIA_OCTOPUS_TEST_CUDA=1.
           JULIA_OCTOPUS_TEST_CHAINRULES: '1'
+          # The query loops fall back to a single chunk when nthreads() == 1,
+          # so a default single-threaded run never touches the `@batch` path in
+          # build_edges_cpu! / materialize_cpu!. Run the suite multithreaded so
+          # the parallel chunking is actually covered.
+          JULIA_NUM_THREADS: '4'
       # Defaults to directories: 'src,ext', so the weak extensions are covered
       # too, not just src/.
       - uses: julia-actions/julia-processcoverage@v1

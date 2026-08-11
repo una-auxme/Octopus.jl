@@ -309,7 +309,7 @@ function build_edges!(tns::TNS{T,NDIMS}, qid::Integer, tid::Integer) where {T,ND
         build_edges_cpu!(
             buf, tns.trees[tid], tns.permutation[tid],
             tns.point_sets[qid].coords, tns.point_sets[tid].coords,
-            tns.query_stacks[1], tns.build_scratch, tns.radius, qid == tid,
+            tns.query_stacks, tns.build_scratch, tns.radius, qid == tid,
         )
     elseif tns.dev === :cuda
         _build_edges_cuda!(tns, pair_idx, qid, tid)
@@ -356,7 +356,7 @@ function materialize_all_neighbors!(tns::TNS{T,NDIMS}) where {T,NDIMS}
         coords_t = tns.point_sets[t].coords
         exclude_self = (q == t)
         materialize_cpu!(buf, tree, perm_t, coords_q, coords_t,
-                         tns.query_stacks[1], tns.radius, exclude_self)
+                         tns.query_stacks, tns.radius, exclude_self)
     end
     return tns
 end

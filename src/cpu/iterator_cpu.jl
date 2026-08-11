@@ -55,8 +55,8 @@ end
     f::F,
     tree::Octree{T,3},
     target_coords::AbstractMatrix{T},
-    perm::Vector{Int32},
-    stack::Vector{Int32},
+    perm::AbstractVector{Int32},
+    stack::AbstractVector{Int32},
     px::T, py::T, pz::T,
     r_sq::T,
 ) where {F,T}
@@ -124,8 +124,8 @@ end
     f::F,
     tree::Octree{T,2},
     target_coords::AbstractMatrix{T},
-    perm::Vector{Int32},
-    stack::Vector{Int32},
+    perm::AbstractVector{Int32},
+    stack::AbstractVector{Int32},
     px::T, py::T,
     r_sq::T,
 ) where {F,T}
@@ -191,8 +191,8 @@ end
     f::F,
     tree::Octree{T,3},
     target_coords::AbstractMatrix{T},
-    perm::Vector{Int32},
-    stack::Vector{Int32},
+    perm::AbstractVector{Int32},
+    stack::AbstractVector{Int32},
     px::T, py::T, pz::T,
     r_sq::T,
 ) where {F,T}
@@ -205,8 +205,8 @@ end
     f::F,
     tree::Octree{T,2},
     target_coords::AbstractMatrix{T},
-    perm::Vector{Int32},
-    stack::Vector{Int32},
+    perm::AbstractVector{Int32},
+    stack::AbstractVector{Int32},
     px::T, py::T,
     r_sq::T,
 ) where {F,T}
@@ -267,8 +267,8 @@ end
     qs::PointSet{T,3,A1},
     ts::PointSet{T,3,A2},
     tree::Octree{T,3},
-    perm::Vector{Int32},
-    stack::Vector{Int32},
+    perm::AbstractVector{Int32},
+    stack::AbstractVector{Int32},
     r::T, i::Int,
 ) where {F,T,A1,A2}
     coords_q = qs.coords
@@ -286,8 +286,8 @@ end
     qs::PointSet{T,2,A1},
     ts::PointSet{T,2,A2},
     tree::Octree{T,2},
-    perm::Vector{Int32},
-    stack::Vector{Int32},
+    perm::AbstractVector{Int32},
+    stack::AbstractVector{Int32},
     r::T, i::Int,
 ) where {F,T,A1,A2}
     coords_q = qs.coords

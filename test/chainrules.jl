@@ -183,6 +183,58 @@ end
     @test all(t -> t isa ChainRulesCore.NoTangent, out_run)
 end
 
+# ---- 7a. gradients survive the parallel query path -----------------------
+#
+# `build_edges_cpu!` runs its two passes under Polyester `@batch`, chunked over
+# query points. `n_query_chunks` only splits above 1024 points, so every other
+# test in this file (N <= 200) exercises the serial path no matter how many
+# threads the suite is started with. This one is sized to chunk, so the rrule
+# is checked against ground truth on the parallel primal.
+#
+# The rrule does not differentiate *through* the traversal — it treats
+# `build_edges` as a primitive and derives dL/dcoords from the emitted edge
+# arrays — so parallelising the primal should be invisible to AD. This test
+# is what makes "should be" checked rather than assumed.
+
+@testset "build_edges_diff: gradient ≈ central-diff above the chunking threshold" begin
+    D, N, radius = 3, 1200, 0.14
+    Random.seed!(8250)
+    coords = rand(Float64, D, N)
+
+    tns = TNS(Float64; ndims = D)
+    set_search_radius!(tns, radius)
+    id = add_point_set!(tns, coords)
+    set_active_search!(tns, id, id)
+    run!(tns)
+    # Guard the premise: with >1 thread this must actually split.
+    @test Octopus.n_query_chunks(N, length(tns.query_stacks)) ==
+          (Threads.nthreads() > 1 ? min(2, Threads.nthreads()) : 1)
+
+    function loss(c)
+        t = TNS(Float64; ndims = D)
+        set_search_radius!(t, radius)
+        i = add_point_set!(t, c)
+        set_active_search!(t, i, i)
+        run!(t)
+        e = build_edges_diff(c, t, i, radius)
+        return sum(abs2, e.rel_displacement) + 0.5 * sum(abs2, e.rel_dist_norm)
+    end
+
+    g = Zygote.gradient(loss, coords)[1]
+    @test size(g) == size(coords)
+    @test all(isfinite, g)
+
+    # Full central differences would be 7200 evaluations; sample instead.
+    Random.seed!(11)
+    ε = 1e-6
+    for k in rand(eachindex(coords), 25)
+        c1 = copy(coords); c1[k] += ε
+        c2 = copy(coords); c2[k] -= ε
+        fd = (loss(c1) - loss(c2)) / (2ε)
+        @test isapprox(g[k], fd; rtol = 1e-5, atol = 1e-6)
+    end
+end
+
 # ---- 7b. apply_zsort is differentiable (gather → scatter) ----------------
 #
 # Before the rrule, this path failed on CPU with "Mutating arrays is not
