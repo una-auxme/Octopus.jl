@@ -8,7 +8,6 @@ module Octopus
 
 using StaticArrays
 using Polyester: @batch
-using Atomix
 import Adapt
 using GPUArraysCore: AbstractGPUArray
 
@@ -38,7 +37,8 @@ export for_each_neighbor, for_each_neighbor_device
 export get_neighborlist, materialize_all_neighbors!
 export build_edges, build_edges!, EdgeBuffer
 export build_edges_diff
-export prepare_zsort!, apply_zsort!
+export prepare_zsort, apply_zsort
+export prepare_zsort!, apply_zsort!   # deprecated bang spellings, see api.jl
 export device_view
 export @for_each_neighbor_device_inline
 export @for_each_neighbor_device_inline_2d

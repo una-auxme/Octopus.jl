@@ -1,6 +1,7 @@
+#
 # Copyright (c) 2026 Josef Jouaux
-# Copyright (c) 2022-present, CompactNSearch contributors
-
+# Licensed under the MIT license. See LICENSE file in the project root for details.
+#
 using Documenter
 using Octopus
 
@@ -24,6 +25,12 @@ makedocs(;
     ],
     # Every exported symbol must appear in the API reference.
     checkdocs = :exports,
+    # Run the `jldoctest` blocks as tests. On by default, but stated explicitly:
+    # a silent flip to `false` would leave the examples rotting unnoticed.
+    doctest = true,
+    # Turn doc warnings (broken @ref links, missing docstrings, failed
+    # doctests) into a failed build rather than console noise CI ignores.
+    warnonly = false,
 )
 
 deploydocs(;

@@ -1,6 +1,5 @@
 #
 # Copyright (c) 2026 Josef Jouaux
-# Copyright (c) 2022-present, CompactNSearch contributors
 # Licensed under the MIT license. See LICENSE file in the project root for details.
 #
 
@@ -9,6 +8,7 @@ using Octopus
 using Random
 
 @testset "Octopus" begin
+    @testset "aqua"          include("aqua.jl")
     @testset "morton"        include("morton.jl")
     @testset "build"         include("build.jl")
     @testset "query_cpu"     include("query_cpu.jl")

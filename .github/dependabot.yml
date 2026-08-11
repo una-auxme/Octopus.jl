@@ -1,0 +1,11 @@
+version: 2
+updates:
+  # Julia dependencies are handled by CompatHelper, not Dependabot. This only
+  # covers the pinned action versions in .github/workflows, which otherwise
+  # drift silently until a major bump breaks a run.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies

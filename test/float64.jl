@@ -112,7 +112,7 @@ end
     end
 end
 
-@testset "Float64 apply_zsort! 1-D + 2-D" begin
+@testset "Float64 apply_zsort 1-D + 2-D" begin
     Random.seed!(4005)
     coords = rand(Float64, 3, 200)
     tns = TNS(Float64); set_search_radius!(tns, 0.1)
@@ -121,13 +121,13 @@ end
     run!(tns)
 
     masses = rand(Float64, 200)
-    sorted = apply_zsort!(tns, id, masses)
+    sorted = apply_zsort(tns, id, masses)
     perm = collect(tns.permutation[id])
     @test sorted == [masses[perm[i]] for i in eachindex(perm)]
     @test typeof(sorted) === typeof(masses)
 
     feats = rand(Float64, 4, 200)
-    sorted2 = apply_zsort!(tns, id, feats)
+    sorted2 = apply_zsort(tns, id, feats)
     ref = similar(feats)
     @inbounds for i in eachindex(perm)
         ref[:, i] = feats[:, perm[i]]

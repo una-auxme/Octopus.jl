@@ -57,7 +57,11 @@ end
 
 # ---------------- device-side iterator ------------------------------------
 # Callable from inside a user's @cuda kernel. Each thread has its own local
-# stack in register/shared memory. We keep the stack compact (depth ≤ 40).
+# traversal stack, sized to `Octopus.STACK_DEPTH_{3,2}D` — the proven worst-case
+# DFS frontier (148 / 94 entries, see src/cpu/build_cpu.jl). Dynamic indexing
+# keeps the MVector in local memory either way; only the ~8 entries a real
+# traversal touches generate memory traffic, so the headroom costs address
+# space rather than bandwidth, and the `@inbounds` pushes cannot overflow.
 
 @inline function _aabb_dist_sq_dev(px::T, py::T, pz::T,
                                     lo1::T, lo2::T, lo3::T,
@@ -91,7 +95,7 @@ methods exist: 3D (`DeviceView{T,3}`) and 2D (`DeviceView{T,2}`).
     pz = @inbounds dv.coords_q[3, i]
     r_sq = dv.radius_sq
 
-    stack = MVector{40,Int32}(undef)
+    stack = MVector{Octopus.STACK_DEPTH_3D,Int32}(undef)
     sp = 1
     @inbounds stack[sp] = Int32(1)
 
@@ -149,7 +153,7 @@ end
     py = @inbounds dv.coords_q[2, i]
     r_sq = dv.radius_sq
 
-    stack = MVector{40,Int32}(undef)
+    stack = MVector{Octopus.STACK_DEPTH_2D,Int32}(undef)
     sp = 1
     @inbounds stack[sp] = Int32(1)
 
@@ -417,7 +421,7 @@ end
 
 function _apply_zsort_cuda(perm::AbstractVector{Int32}, user_array::AbstractArray)
     ndims(user_array) <= 2 || throw(ArgumentError(
-        "apply_zsort! supports 1-D or 2-D arrays only; got $(ndims(user_array))-D"))
+        "apply_zsort supports 1-D or 2-D arrays only; got $(ndims(user_array))-D"))
     length(perm) == size(user_array, ndims(user_array)) ||
         throw(DimensionMismatch("perm length $(length(perm)) does not match last axis $(size(user_array, ndims(user_array)))"))
     if ndims(user_array) == 1

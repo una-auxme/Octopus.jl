@@ -257,6 +257,27 @@ end
 Collect the indices of all points in set `tid` that lie within `radius` of
 point `i` in set `qid`. Allocates a fresh Vector each call — use
 `for_each_neighbor` for the zero-allocation path.
+
+Unlike `for_each_neighbor`, the self pair is filtered when `qid == tid`.
+
+```jldoctest
+julia> coords = Float32[0 0 1; 0 0 0; 0 0 0];   # points 1 and 2 coincide
+
+julia> tns = TNS(Float32);
+
+julia> set_search_radius!(tns, 0.5f0);
+
+julia> id = add_point_set!(tns, coords)
+1
+
+julia> set_active_search!(tns, id, id);
+
+julia> run!(tns);
+
+julia> get_neighborlist(tns, id, id, 1)   # point 3 is a full unit away
+1-element Vector{Int32}:
+ 2
+```
 """
 function get_neighborlist(tns::TNS{T,NDIMS}, qid::Integer, tid::Integer, i::Integer) where {T,NDIMS}
     out = Int32[]
@@ -288,7 +309,7 @@ function build_edges!(tns::TNS{T,NDIMS}, qid::Integer, tid::Integer) where {T,ND
         build_edges_cpu!(
             buf, tns.trees[tid], tns.permutation[tid],
             tns.point_sets[qid].coords, tns.point_sets[tid].coords,
-            tns.query_stacks[1], tns.build_scratch, tns.radius, qid == tid,
+            tns.query_stacks, tns.build_scratch, tns.radius, qid == tid,
         )
     elseif tns.dev === :cuda
         _build_edges_cuda!(tns, pair_idx, qid, tid)
@@ -335,7 +356,7 @@ function materialize_all_neighbors!(tns::TNS{T,NDIMS}) where {T,NDIMS}
         coords_t = tns.point_sets[t].coords
         exclude_self = (q == t)
         materialize_cpu!(buf, tree, perm_t, coords_q, coords_t,
-                         tns.query_stacks[1], tns.radius, exclude_self)
+                         tns.query_stacks, tns.radius, exclude_self)
     end
     return tns
 end
@@ -343,38 +364,72 @@ end
 # ---------------- z-sort --------------------------------------------------
 
 """
-    prepare_zsort!(tns) -> tns
+    prepare_zsort(tns) -> tns
 
 Precondition check matching the C++ TreeNSearch API: asserts that the
 permutation for every registered point set is populated (i.e. `run!(tns)`
 has been called since the last build). Does not allocate or mutate state —
-call this when you want a clear error before invoking `apply_zsort!` from
+call this when you want a clear error before invoking `apply_zsort` from
 a hot loop. It is safe but unnecessary to call it every step;
-`apply_zsort!` itself does not depend on it.
+`apply_zsort` itself does not depend on it.
+
+!!! note "Renamed in v0.2"
+    Spelled `prepare_zsort!` in v0.1 to mirror the C++ name. Since it mutates
+    nothing, the `!` was misleading; the bang spelling still works and is
+    deprecated.
 """
-function prepare_zsort!(tns::TNS)
+function prepare_zsort(tns::TNS)
     for set_id in eachindex(tns.point_sets)
         length(tns.permutation[set_id]) == tns.point_sets[set_id].n ||
-            error("prepare_zsort!: call run! first so the permutation for set $set_id is available")
+            error("prepare_zsort: call run! first so the permutation for set $set_id is available")
     end
     return tns
 end
 
 """
-    apply_zsort!(tns, set_id, user_array) -> permuted_array
+    apply_zsort(tns, set_id, user_array) -> permuted_array
 
 Return a new array whose entries follow the z-order permutation built for
 point set `set_id`. Accepts a 1-D vector (length N) or a 2-D matrix
 (`(F, N)`); higher-rank inputs are rejected. Works on both CPU and CUDA
 backends — the returned array lives on the same device as `user_array`.
+
+`user_array` is read, never written: the permuted result is returned in a
+freshly allocated array.
+
+!!! note "Renamed in v0.2"
+    Spelled `apply_zsort!` in v0.1 to mirror the C++ name. Since it leaves
+    its arguments untouched and returns a new array, the `!` was misleading;
+    the bang spelling still works and is deprecated.
 """
-function apply_zsort!(tns::TNS, set_id::Integer, user_array::AbstractArray)
+function apply_zsort(tns::TNS, set_id::Integer, user_array::AbstractArray)
     perm = tns.permutation[set_id]
     if tns.dev === :cuda
         return _apply_zsort_cuda(perm, user_array)
     end
     return apply_zsort_cpu!(similar(user_array), perm, user_array)
 end
+
+# v0.1 spellings. Both were misnamed under the Julia convention — neither
+# mutates an argument — but they mirror the C++ TreeNSearch surface, so they
+# stay available (with a deprecation warning) rather than breaking callers.
+@deprecate prepare_zsort!(tns::TNS) prepare_zsort(tns)
+@deprecate apply_zsort!(tns::TNS, set_id::Integer, user_array::AbstractArray) apply_zsort(tns, set_id, user_array)
+
+@doc """
+    prepare_zsort!(tns) -> tns
+
+Deprecated spelling of [`prepare_zsort`](@ref). Mutates nothing, so the `!` was
+misleading; forwards to the new name and emits a deprecation warning.
+""" prepare_zsort!
+
+@doc """
+    apply_zsort!(tns, set_id, user_array) -> permuted_array
+
+Deprecated spelling of [`apply_zsort`](@ref). Returns a new array rather than
+permuting `user_array` in place, so the `!` was misleading; forwards to the new
+name and emits a deprecation warning.
+""" apply_zsort!
 
 # ---------------- device-side iterator stubs ------------------------------
 # These dispatch to the CUDA extension at runtime when the user is on GPU.

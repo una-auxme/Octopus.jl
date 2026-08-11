@@ -1,6 +1,5 @@
 #
 # Copyright (c) 2026 Josef Jouaux
-# Copyright (c) 2022-present, CompactNSearch contributors
 # Licensed under the MIT license. See LICENSE file in the project root for details.
 #
 
@@ -37,10 +36,62 @@ using ChainRulesCore: NoTangent, ZeroTangent, AbstractZero, Tangent, @non_differ
 @non_differentiable Octopus.resize_point_set!(::Any, ::Any, ::Any)
 @non_differentiable Octopus.update_point_set!(::Any, ::Any, ::Any)
 @non_differentiable Octopus.set_active_search!(::Any, ::Any, ::Any)
-@non_differentiable Octopus.prepare_zsort!(::Any)
+@non_differentiable Octopus.prepare_zsort(::Any)
+# NB: `apply_zsort` is deliberately absent from this list — it is a gather and
+# has a real gradient. See the rrule below.
 @non_differentiable Octopus.get_neighborlist(::Any, ::Any, ::Any, ::Any)
 @non_differentiable Octopus.materialize_all_neighbors!(::Any)
 @non_differentiable Octopus.device_view(::Any, ::Any, ::Any)
+
+# ---------------- apply_zsort ---------------------------------------------
+#
+# `apply_zsort` is a gather along the point axis:
+#
+#     out[i]    = user_array[perm[i]]        (1-D)
+#     out[:, i] = user_array[:, perm[i]]     (2-D)
+#
+# so its adjoint is the matching scatter. `perm` is a permutation of 1:N, so
+# every source slot lands in exactly one destination slot — no accumulation,
+# and the scatter is itself just an indexed assignment.
+#
+# Without this rule the CPU path dies inside Zygote with "Mutating arrays is
+# not supported -- called setindex!", because `apply_zsort_cpu!` fills its
+# output with `setindex!` even though the function is externally pure. The
+# CUDA path happened to work, being written as plain fancy indexing, so the
+# two backends disagreed on whether z-sorted features were differentiable at
+# all. One rule covers both: the scatter below is vectorised, so it stays on
+# the device for `CuArray` inputs rather than falling into scalar indexing.
+
+function ChainRulesCore.rrule(::typeof(Octopus.apply_zsort),
+                              tns::TNS, set_id::Integer,
+                              user_array::AbstractArray)
+    y = Octopus.apply_zsort(tns, set_id, user_array)
+    perm = tns.permutation[set_id]
+
+    function apply_zsort_pullback(Δ)
+        Δy = ChainRulesCore.unthunk(Δ)
+        Δy isa AbstractZero &&
+            return (NoTangent(), NoTangent(), NoTangent(), ZeroTangent())
+        grad = _scatter_zsort(user_array, perm, Δy)
+        return (NoTangent(), NoTangent(), NoTangent(), grad)
+    end
+
+    return y, apply_zsort_pullback
+end
+
+# Function barrier: `tns.permutation` is `Vector{Any}`, so `perm` reaches the
+# pullback untyped. Splitting the scatter out lets it specialise on the
+# concrete permutation and tangent types.
+function _scatter_zsort(user_array::AbstractArray, perm::AbstractVector,
+                        Δy::AbstractArray)
+    grad = zero(user_array)
+    if ndims(user_array) == 1
+        grad[perm] = Δy
+    else
+        grad[:, perm] = Δy
+    end
+    return grad
+end
 
 # ---------------- build_edges_diff: CPU primal -----------------------------
 

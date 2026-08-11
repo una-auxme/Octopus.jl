@@ -20,7 +20,7 @@ function _ref_zsort(perm, x::AbstractMatrix)
     out
 end
 
-@testset "apply_zsort! CPU 1-D" begin
+@testset "apply_zsort CPU 1-D" begin
     Random.seed!(11)
     coords = rand(Float32, 3, 200)
     tns = TNS(Float32)
@@ -28,17 +28,17 @@ end
     id = add_point_set!(tns, coords)
     set_active_search!(tns, id, id)
     run!(tns)
-    prepare_zsort!(tns)
+    prepare_zsort(tns)
 
     masses = rand(Float32, 200)
-    sorted = apply_zsort!(tns, id, masses)
+    sorted = apply_zsort(tns, id, masses)
 
     perm = collect(tns.permutation[id])
     @test sorted == _ref_zsort(perm, masses)
     @test typeof(sorted) === typeof(masses)
 end
 
-@testset "apply_zsort! CPU 2-D" begin
+@testset "apply_zsort CPU 2-D" begin
     Random.seed!(13)
     coords = rand(Float32, 3, 200)
     tns = TNS(Float32)
@@ -48,13 +48,13 @@ end
     run!(tns)
 
     velocities = rand(Float32, 4, 200)
-    sorted = apply_zsort!(tns, id, velocities)
+    sorted = apply_zsort(tns, id, velocities)
 
     perm = collect(tns.permutation[id])
     @test sorted == _ref_zsort(perm, velocities)
 end
 
-@testset "apply_zsort! CPU rejects 3-D input" begin
+@testset "apply_zsort CPU rejects 3-D input" begin
     Random.seed!(17)
     coords = rand(Float32, 3, 50)
     tns = TNS(Float32)
@@ -64,13 +64,29 @@ end
     run!(tns)
 
     feats = rand(Float32, 3, 3, 50)
-    @test_throws ArgumentError apply_zsort!(tns, id, feats)
+    @test_throws ArgumentError apply_zsort(tns, id, feats)
 end
 
-@testset "prepare_zsort! errors before run!" begin
+@testset "prepare_zsort errors before run!" begin
     coords = rand(Float32, 3, 32)
     tns = TNS(Float32)
     set_search_radius!(tns, 0.1f0)
     id = add_point_set!(tns, coords)
-    @test_throws ErrorException prepare_zsort!(tns)
+    @test_throws ErrorException prepare_zsort(tns)
+end
+
+# The v0.1 bang spellings are deprecated, not removed: callers written against
+# the C++-mirroring names must keep working (with a depwarn) until v1.
+@testset "deprecated bang spellings still forward" begin
+    Random.seed!(17)
+    coords = rand(Float32, 3, 64)
+    masses = rand(Float32, 64)
+    tns = TNS(Float32)
+    set_search_radius!(tns, 0.1f0)
+    id = add_point_set!(tns, coords)
+    set_active_search!(tns, id, id)
+    run!(tns)
+
+    @test (@test_deprecated prepare_zsort!(tns)) === tns
+    @test (@test_deprecated apply_zsort!(tns, id, masses)) == apply_zsort(tns, id, masses)
 end

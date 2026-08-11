@@ -22,6 +22,26 @@
 @inline _bits_per_axis(::Val{3}) = 21  # 63-bit code, top bit zero
 @inline _max_tree_levels(v::Val) = _bits_per_axis(v)
 
+# Worst-case depth of the neighbor-traversal DFS stack (host and device).
+#
+# Popping a node pushes up to NCH = 2^NDIMS children, a net gain of NCH-1, and
+# a node is only expanded while its level is < max_levels. So the frontier
+# never exceeds 1 + (NCH - 1) * max_levels:
+#
+#   3D: 1 + 7 * 21 = 148        2D: 1 + 3 * 31 = 94
+#
+# Measured peaks on uniform, clustered and outlier-stretched clouds up to
+# N = 5e5 are ~8, because the radius test prunes nearly every child before it
+# is pushed. Nothing in the build *enforces* that, though, so the traversal
+# buffers are sized from the bound rather than from the observation — an
+# overflow here would be a silent out-of-bounds write under `@inbounds`.
+# Keep this in sync with `_gpu_maxlev` in ext/cuda_build.jl.
+@inline _max_stack_depth(v::Val{NDIMS}) where {NDIMS} =
+    1 + ((1 << NDIMS) - 1) * _max_tree_levels(v)
+
+const STACK_DEPTH_3D = _max_stack_depth(Val(3))  # 148
+const STACK_DEPTH_2D = _max_stack_depth(Val(2))  # 94
+
 # Bit position of the lowest of the NDIMS Morton bits at level L (L=0 = root split).
 @inline function _level_shift(L::Integer, ::Val{NDIMS}) where {NDIMS}
     bits = _bits_per_axis(Val(NDIMS))

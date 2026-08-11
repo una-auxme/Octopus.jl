@@ -5,7 +5,7 @@
 #
 
 # Apply the z-order permutation to user arrays.
-# prepare_zsort! ensures the permutation for every registered point set is available
+# prepare_zsort ensures the permutation for every registered point set is available
 # (requires refit_mode, or at least that the current build kept it).
 
 function apply_zsort_cpu!(out::AbstractArray, perm::AbstractVector{Int32}, original::AbstractArray)
@@ -13,7 +13,7 @@ function apply_zsort_cpu!(out::AbstractArray, perm::AbstractVector{Int32}, origi
     # so the assertion (which checks the last axis) never disagrees with the
     # loop (which iterates the column axis).
     ndims(original) <= 2 || throw(ArgumentError(
-        "apply_zsort! supports 1-D or 2-D arrays only; got $(ndims(original))-D"))
+        "apply_zsort supports 1-D or 2-D arrays only; got $(ndims(original))-D"))
     @assert length(perm) == size(original, ndims(original))
     if ndims(original) == 1
         @inbounds for i in eachindex(perm)

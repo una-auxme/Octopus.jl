@@ -22,7 +22,8 @@ using Random
                 :for_each_neighbor, :for_each_neighbor_device,
                 :get_neighborlist, :materialize_all_neighbors!,
                 :build_edges, :build_edges!, :EdgeBuffer,
-                :prepare_zsort!, :apply_zsort!,
+                :prepare_zsort, :apply_zsort,
+                :prepare_zsort!, :apply_zsort!,   # deprecated v0.1 spellings
                 :device_view,
                 Symbol("@for_each_neighbor_device_inline"),
                 Symbol("@for_each_neighbor_device_inline_2d"))
